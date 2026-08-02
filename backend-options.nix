@@ -58,8 +58,8 @@ with lib; let
     };
     memoryMax = mkOption {
       type = types.str;
-      default = "10G";
-      description = "systemd MemoryMax cgroup limit (heap + overhead)";
+      default = "12G";
+      description = "systemd MemoryMax cgroup limit (heap + JVM/native overhead)";
     };
     adminPasswordFile = mkOption {
       type = types.nullOr types.path;

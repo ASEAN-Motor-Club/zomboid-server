@@ -99,6 +99,7 @@ in {
         User = cfg.user;
         Group = "modders";
         Restart = "on-failure";
+        RestartSec = "10";
         KillSignal = "SIGCONT";
         TimeoutStopSec = "60";
         ExecStop = stopScript;
@@ -110,12 +111,16 @@ in {
         MemoryMax = cfg.memoryMax;
       };
 
-      preStart = ''
+      # NOTE: the steamcmd update + setup run inside ExecStart (not ExecStartPre),
+      # so they are NOT bounded by TimeoutStartSec. The first boot downloads ~3 GB
+      # and would be killed by the default 90s start timeout if placed in preStart.
+      script = ''
         ${lib.getExe serverUpdateScript}
 
         # steam_appid.txt must contain the GAME app id (108600), not the
         # dedicated server's (380870). A wrong value triggers
         # "Assertion Failed: Illegal termination of worker thread".
+        # (Run after the update: steamcmd would otherwise overwrite it.)
         echo 108600 > $STATE_DIRECTORY/steam_appid.txt
 
         # Patch JVM heap in the freshly downloaded start-server.sh so memory is
@@ -130,9 +135,7 @@ in {
         mkdir -p "$SRV"
         cp -n --no-preserve=mode,ownership ${./Configs}/server.ini "$SRV/${cfg.serverName}.ini" 2>/dev/null || true
         cp -n --no-preserve=mode,ownership ${./Configs}/server_spawnregions.lua "$SRV/${cfg.serverName}_spawnregions.lua" 2>/dev/null || true
-      '';
 
-      script = ''
         exec ${pkgs.steam-run}/bin/steam-run "$STATE_DIRECTORY/start-server.sh" \
           -cachedir "$STATE_DIRECTORY/Zomboid" \
           -servername "${cfg.serverName}" \
