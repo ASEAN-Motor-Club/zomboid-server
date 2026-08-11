@@ -136,11 +136,17 @@ in {
         cp -n --no-preserve=mode,ownership ${./Configs}/server.ini "$SRV/${cfg.serverName}.ini" 2>/dev/null || true
         cp -n --no-preserve=mode,ownership ${./Configs}/server_spawnregions.lua "$SRV/${cfg.serverName}_spawnregions.lua" 2>/dev/null || true
 
+        # PZ binds TWO UDP sockets: -port (Steam query, defaultPort=cfg.port)
+        # and -udpport (RakNet). They MUST differ; passing the same value makes
+        # RakNet try to bind the same port twice and abort startup with
+        # "Connection Startup Failed. Code: 5" (RakPeer.Startup returns
+        # RAKNET_SOCKET_BIND_FAILED). The RakNet port is cfg.port + 1, which is
+        # also the second port the firewall opens (cfg.port and cfg.port + 1).
         exec ${pkgs.steam-run}/bin/steam-run "$STATE_DIRECTORY/start-server.sh" \
-          -cachedir "$STATE_DIRECTORY/Zomboid" \
+          -cachedir="$STATE_DIRECTORY/Zomboid" \
           -servername "${cfg.serverName}" \
           -port ${toString cfg.port} \
-          -udpport ${toString cfg.port} \
+          -udpport ${toString (cfg.port + 1)} \
           -statistic 0 ${optionalString (cfg.adminPasswordFile != null) ''-adminpassword "$(cat ${cfg.adminPasswordFile})"''} ${lib.escapeShellArgs cfg.extraServerArgs}
       '';
     };
