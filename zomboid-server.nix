@@ -98,7 +98,13 @@ in {
         Type = "simple";
         User = cfg.user;
         Group = "modders";
-        Restart = "on-failure";
+        # Restart=always (not on-failure): the "Server Workshop Mod Update
+        # Checker & Auto-Restart" (3659447892) shuts the server down cleanly to
+        # re-sync updated workshop items. A clean quit exits 0 (success), which
+        # on-failure would NOT restart — but we WANT it to bounce so the mod
+        # loop absorbs mid-day workshop updates. always covers both clean-exit
+        # restarts AND crash restarts. (systemctl stop still stops normally.)
+        Restart = "always";
         RestartSec = "10";
         KillSignal = "SIGCONT";
         TimeoutStopSec = "60";
