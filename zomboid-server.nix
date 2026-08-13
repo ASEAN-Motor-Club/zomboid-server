@@ -44,6 +44,18 @@ with lib; let
   # Systemd unit runs with a restricted PATH; reconcileIni needs python3.
   reconcilePath = lib.makeBinPath (with pkgs; [ python3 coreutils gnused ]);
 
+  # Flatten declarative sandboxVars ({BlockName = { key = value; };}) into
+  # reconcileLua's desired format: one `BlockName.key=value` line per pinned key.
+  renderedSandbox = pkgs.writeText "sandbox-overrides.txt" (
+    concatStringsSep "\n" (
+      mapAttrsToList (block: vars:
+        concatStringsSep "\n" (
+          mapAttrsToList (k: v: "${block}.${k}=${v}") vars
+        )
+      ) cfg.sandboxVars
+    ) + "\n"
+  );
+
   # Idempotent, no-space INI reconcile. PZ's ConfigFile.read() splits on '=' and
   # does NOT trim the key, so `Key = value` (crudini's default spacing) becomes
   # key "Key " which never matches and is silently dropped. This script rewrites
@@ -87,6 +99,64 @@ with lib; let
                 seen.add(k)
         out.append(l)
     open(target, "w").write("\n".join(out) + ("\n" if out else ""))
+  '';
+
+  # Block-scoped, idempotent Lua reconcile for <servername>_SandboxVars.lua.
+  # PZ generates this file at runtime (and re-merges mod sandbox sections), so we
+  # can't build-time patch it. Instead we rewrite declared keys inside their
+  # `BlockName = { ... }` section on every boot. Preserves everything else
+  # (comments, order, other mods' keys) and asserts each key even if PZ
+  # regenerates the block from a fresh default.
+  reconcileLua = pkgs.writeScript "reconcile-lua" ''
+    #!${pkgs.python3}/bin/python3
+    import os, re, sys
+    target = sys.argv[1]
+    # desired: lines "BlockName.key=value" (one per pinned key)
+    want = []
+    for raw in open(sys.argv[2]).read().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "." not in line or "=" not in line:
+            continue
+        block, kv = line.split(".", 1)
+        k, v = kv.split("=", 1)
+        want.append((block.strip(), k.strip(), v.strip()))
+    lines = []
+    if os.path.exists(target):
+        lines = open(target).read().splitlines()
+    def block_start_re():
+        return re.compile(r'^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\{')
+    # Find each `Name = {` and its matching closing brace at the same indent.
+    def find_block(name):
+        res = []
+        for i, l in enumerate(lines):
+            m = block_start_re().match(l)
+            if m and m.group(2) == name:
+                indent = len(m.group(1))
+                # find closing brace at same indent
+                j = i + 1
+                while j < len(lines):
+                    if re.match(r'^' + r'\s' * indent + r'\},?\s*$', lines[j]):
+                        break
+                    j += 1
+                res.append((i, j, indent))
+        return res
+    for block, key, val in want:
+        blocks = find_block(block)
+        if not blocks:
+            continue  # block not present yet (mod not loaded); nothing to patch
+        for (si, ei, indent) in blocks:
+            key_done = False
+            for j in range(si + 1, ei):
+                km = re.match(r'^(\s*)' + re.escape(key) + r'\s*=\s*([^,]+),?\s*$', lines[j])
+                if km:
+                    lines[j] = km.group(1) + f"{key} = {val},"
+                    key_done = True
+                    break
+            if not key_done:
+                # insert after the opening brace
+                lines.insert(si + 1, (" " * (indent + 4)) + f"{key} = {val},")
+    with open(target, "w") as f:
+        f.write("\n".join(lines) + ("\n" if lines else ""))
   '';
 
   serverUpdateScript = pkgs.writeScriptBin "zomboid-update" ''
@@ -231,6 +301,14 @@ in {
         fi
 
         cp -n --no-preserve=mode,ownership ${./Configs}/server_spawnregions.lua "$SRV/${cfg.serverName}_spawnregions.lua" 2>/dev/null || true
+
+        # Reconcile the declarative sandbox-var overrides into the runtime
+        # <servername>_SandboxVars.lua. PZ generates/merges this file itself, so
+        # it's not seeded — we assert our pinned keys here every boot instead.
+        SBOX="$SRV/${cfg.serverName}_SandboxVars.lua"
+        if [ -f "$SBOX" ]; then
+          ${reconcileLua} "$SBOX" ${renderedSandbox}
+        fi
 
         # PZ binds TWO UDP sockets: -port (Steam query, defaultPort=cfg.port)
         # and -udpport (RakNet). They MUST differ; passing the same value makes

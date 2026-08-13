@@ -196,6 +196,26 @@ with lib; let
       default = null;
       description = "Path to a file containing the Discord bot token (an agenix secret). Injected into <servername>.ini on every boot; never committed.";
     };
+    # --- Declarative SandboxVars.lua overrides ---
+    # PZ writes mod sandbox settings into <servername>_SandboxVars.lua at runtime
+    # (it is NOT seeded by the module — the server owns it). Nix build-time
+    # patching can't reach a runtime-generated file, so we reconcile the keys we
+    # want to pin on every boot (same model as `settings` for the .ini): a small
+    # block-scoped Lua rewrite, keyed by the mod block (e.g. the auto-restart
+    # mod's WorkshopModServerUpdate) then by the option key.
+    sandboxVars = mkOption {
+      type = types.attrsOf (types.attrsOf types.str);
+      default = {
+        # Server Workshop Mod Update Checker & Auto-Restart (3659447892): after
+        # it detects a workshop update it shuts the server down for re-sync. This
+        # is the countdown delay from detection to shutdown. Default is 1 minute;
+        # 5 gives players breathing room to log out before the bounce.
+        WorkshopModServerUpdate = {
+          RestartDelayMinutes = "5";
+        };
+      };
+      description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
+    };
   };
 in {
   options = backendOptions;
