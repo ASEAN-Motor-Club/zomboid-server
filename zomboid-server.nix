@@ -16,6 +16,77 @@ with lib; let
 
   betaFlag = optionalString (cfg.betaBranch != null) "-beta ${cfg.betaBranch}";
 
+  # --- Declarative server.ini rendering ---
+  # Assemble the full override-only <servername>.ini content from the module's
+  # declarative options (settings + workshopItems + mods + discord). DiscordToken
+  # is intentionally NOT here; it's injected at boot from the agenix secret.
+  #
+  # PZ's ConfigFile.read() splits on '=' WITHOUT trimming the key, so every key
+  # must be no-space (crudini emits exactly that). PZ auto-generates every key we
+  # don't pin, so this is "override-only" — but it is re-applied EVERY boot, so no
+  # single `cp -n` stale-file trap can silently drop a key again.
+  renderedIni = pkgs.writeText "server.ini" (
+    concatStringsSep "\n" (
+      (mapAttrsToList (k: v: "${k}=${v}") cfg.settings)
+      ++ [
+        "WorkshopItems=${concatStringsSep ";" cfg.workshopItems}"
+        "Mods=${concatStringsSep ";" cfg.mods}"
+      ]
+      ++ optional cfg.discord.enable "DiscordEnable=true"
+      ++ optionalString (cfg.discord.enable && cfg.discord.chatChannel != "") "DiscordChatChannel=${cfg.discord.chatChannel}"
+      ++ optionalString (cfg.discord.enable && cfg.discord.logChannel != "") "DiscordLogChannel=${cfg.discord.logChannel}"
+      ++ optionalString (cfg.discord.enable && cfg.discord.commandChannel != "") "DiscordCommandChannel=${cfg.discord.commandChannel}"
+    ) + "\n"
+  );
+
+  # Systemd unit runs with a restricted PATH; reconcileIni needs python3.
+  reconcilePath = lib.makeBinPath (with pkgs; [ python3 coreutils gnused ]);
+
+  # Idempotent, no-space INI reconcile. PZ's ConfigFile.read() splits on '=' and
+  # does NOT trim the key, so `Key = value` (crudini's default spacing) becomes
+  # key "Key " which never matches and is silently dropped. This script rewrites
+  # ONLY the keys present in the desired override file, preserving PZ's own
+  # runtime-generated keys (and their positions), and emits no-space `key=value`.
+  reconcileIni = pkgs.writeScript "reconcile-ini" ''
+    #!${pkgs.python3}/bin/python3
+    import os, sys
+    target, desired = sys.argv[1], sys.argv[2]
+    lines = []
+    if os.path.exists(target):
+        lines = open(target).read().splitlines()
+    want = {}
+    for raw in open(desired).read().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        want[k] = v
+    pos = {}
+    for i, l in enumerate(lines):
+        s = l.strip()
+        if "=" in s:
+            pos[s.split("=", 1)[0]] = i
+    for k, v in want.items():
+        kv = f"{k}={v}"
+        if k in pos:
+            lines[pos[k]] = kv
+        else:
+            lines.append(kv)
+            pos[k] = len(lines) - 1
+    seen = set()
+    out = []
+    for l in lines:
+        s = l.strip()
+        if "=" in s:
+            k = s.split("=", 1)[0]
+            if k in want and k in seen:
+                continue
+            if k in want:
+                seen.add(k)
+        out.append(l)
+    open(target, "w").write("\n".join(out) + ("\n" if out else ""))
+  '';
+
   serverUpdateScript = pkgs.writeScriptBin "zomboid-update" ''
     set -xeu
 
@@ -135,11 +206,28 @@ in {
           sed -i -E 's/-Xms[0-9]+[gGmM]/-Xms${cfg.jvmMinHeap}/g; s/-Xmx[0-9]+[gGmM]/-Xmx${cfg.jvmMaxHeap}/g' "$STATE_DIRECTORY/start-server.sh"
         fi
 
-        # Seed config templates (no-clobber: first boot only). This preserves
-        # live reloadoptions edits and world saves across restarts.
+        # Reconcile the declarative server config onto the live <servername>.ini
+        # EVERY boot (idempotent). Unlike the old single `cp -n` seed — where a
+        # stale file silently kept old values and the whole config could be wiped
+        # by deleting it — this re-asserts every declaratively-declared key each
+        # boot, so nothing can drift or be dropped. PZ's runtime-generated keys
+        # (config it writes back) are preserved by reconcileIni.
         SRV="$STATE_DIRECTORY/Zomboid/Server"
+        SERVER_INI="$STATE_DIRECTORY/Zomboid/Server/${cfg.serverName}.ini"
         mkdir -p "$SRV"
-        cp -n --no-preserve=mode,ownership ${./Configs}/server.ini "$SRV/${cfg.serverName}.ini" 2>/dev/null || true
+        export PATH="${reconcilePath}:$PATH"
+        ${reconcileIni} "$SERVER_INI" ${renderedIni}
+
+        # Discord bot token is a SECRET from agenix, never rendered into the nix
+        # store seed. Inject it on every boot so a reconcile can't empty it.
+        # (Write to a temp desired-file; avoid process substitution in the shell.)
+        if [ -n "${cfg.discordTokenFile}" ] && [ -f "${cfg.discordTokenFile}" ]; then
+          token_seed="$(mktemp)"
+          ( umask 077; echo "DiscordToken=$(cat ${cfg.discordTokenFile})" > "$token_seed" )
+          ${reconcileIni} "$SERVER_INI" "$token_seed"
+          rm -f "$token_seed"
+        fi
+
         cp -n --no-preserve=mode,ownership ${./Configs}/server_spawnregions.lua "$SRV/${cfg.serverName}_spawnregions.lua" 2>/dev/null || true
 
         # PZ binds TWO UDP sockets: -port (Steam query, defaultPort=cfg.port)
