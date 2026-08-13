@@ -33,9 +33,11 @@ with lib; let
         "Mods=${concatStringsSep ";" cfg.mods}"
       ]
       ++ optional cfg.discord.enable "DiscordEnable=true"
-      ++ optionalString (cfg.discord.enable && cfg.discord.chatChannel != "") "DiscordChatChannel=${cfg.discord.chatChannel}"
-      ++ optionalString (cfg.discord.enable && cfg.discord.logChannel != "") "DiscordLogChannel=${cfg.discord.logChannel}"
-      ++ optionalString (cfg.discord.enable && cfg.discord.commandChannel != "") "DiscordCommandChannel=${cfg.discord.commandChannel}"
+      # NOTE: use `optional`, not `optionalString`, here — these are concatenated
+      # into a list, and optionalString returns a scalar string (type error).
+      ++ optional (cfg.discord.enable && cfg.discord.chatChannel != "") "DiscordChatChannel=${cfg.discord.chatChannel}"
+      ++ optional (cfg.discord.enable && cfg.discord.logChannel != "") "DiscordLogChannel=${cfg.discord.logChannel}"
+      ++ optional (cfg.discord.enable && cfg.discord.commandChannel != "") "DiscordCommandChannel=${cfg.discord.commandChannel}"
     ) + "\n"
   );
 
