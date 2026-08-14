@@ -16,6 +16,149 @@ with lib; let
 
   betaFlag = optionalString (cfg.betaBranch != null) "-beta ${cfg.betaBranch}";
 
+  # --- Declarative server.ini rendering ---
+  # Assemble the full override-only <servername>.ini content from the module's
+  # declarative options (settings + workshopItems + mods + discord). DiscordToken
+  # is intentionally NOT here; it's injected at boot from the agenix secret.
+  #
+  # PZ's ConfigFile.read() splits on '=' WITHOUT trimming the key, so every key
+  # must be no-space (crudini emits exactly that). PZ auto-generates every key we
+  # don't pin, so this is "override-only" — but it is re-applied EVERY boot, so no
+  # single `cp -n` stale-file trap can silently drop a key again.
+  renderedIni = pkgs.writeText "server.ini" (
+    concatStringsSep "\n" (
+      (mapAttrsToList (k: v: "${k}=${v}") cfg.settings)
+      ++ [
+        "WorkshopItems=${concatStringsSep ";" cfg.workshopItems}"
+        "Mods=${concatStringsSep ";" cfg.mods}"
+      ]
+      ++ optional cfg.discord.enable "DiscordEnable=true"
+      # NOTE: use `optional`, not `optionalString`, here — these are concatenated
+      # into a list, and optionalString returns a scalar string (type error).
+      ++ optional (cfg.discord.enable && cfg.discord.chatChannel != "") "DiscordChatChannel=${cfg.discord.chatChannel}"
+      ++ optional (cfg.discord.enable && cfg.discord.logChannel != "") "DiscordLogChannel=${cfg.discord.logChannel}"
+      ++ optional (cfg.discord.enable && cfg.discord.commandChannel != "") "DiscordCommandChannel=${cfg.discord.commandChannel}"
+    ) + "\n"
+  );
+
+  # Systemd unit runs with a restricted PATH; reconcileIni needs python3.
+  reconcilePath = lib.makeBinPath (with pkgs; [ python3 coreutils gnused ]);
+
+  # Flatten declarative sandboxVars ({BlockName = { key = value; };}) into
+  # reconcileLua's desired format: one `BlockName.key=value` line per pinned key.
+  renderedSandbox = pkgs.writeText "sandbox-overrides.txt" (
+    concatStringsSep "\n" (
+      mapAttrsToList (block: vars:
+        concatStringsSep "\n" (
+          mapAttrsToList (k: v: "${block}.${k}=${v}") vars
+        )
+      ) cfg.sandboxVars
+    ) + "\n"
+  );
+
+  # Idempotent, no-space INI reconcile. PZ's ConfigFile.read() splits on '=' and
+  # does NOT trim the key, so `Key = value` (crudini's default spacing) becomes
+  # key "Key " which never matches and is silently dropped. This script rewrites
+  # ONLY the keys present in the desired override file, preserving PZ's own
+  # runtime-generated keys (and their positions), and emits no-space `key=value`.
+  reconcileIni = pkgs.writeScript "reconcile-ini" ''
+    #!${pkgs.python3}/bin/python3
+    import os, sys
+    target, desired = sys.argv[1], sys.argv[2]
+    lines = []
+    if os.path.exists(target):
+        lines = open(target).read().splitlines()
+    want = {}
+    for raw in open(desired).read().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        want[k] = v
+    pos = {}
+    for i, l in enumerate(lines):
+        s = l.strip()
+        if "=" in s:
+            pos[s.split("=", 1)[0]] = i
+    for k, v in want.items():
+        kv = f"{k}={v}"
+        if k in pos:
+            lines[pos[k]] = kv
+        else:
+            lines.append(kv)
+            pos[k] = len(lines) - 1
+    seen = set()
+    out = []
+    for l in lines:
+        s = l.strip()
+        if "=" in s:
+            k = s.split("=", 1)[0]
+            if k in want and k in seen:
+                continue
+            if k in want:
+                seen.add(k)
+        out.append(l)
+    open(target, "w").write("\n".join(out) + ("\n" if out else ""))
+  '';
+
+  # Block-scoped, idempotent Lua reconcile for <servername>_SandboxVars.lua.
+  # PZ generates this file at runtime (and re-merges mod sandbox sections), so we
+  # can't build-time patch it. Instead we rewrite declared keys inside their
+  # `BlockName = { ... }` section on every boot. Preserves everything else
+  # (comments, order, other mods' keys) and asserts each key even if PZ
+  # regenerates the block from a fresh default.
+  reconcileLua = pkgs.writeScript "reconcile-lua" ''
+    #!${pkgs.python3}/bin/python3
+    import os, re, sys
+    target = sys.argv[1]
+    # desired: lines "BlockName.key=value" (one per pinned key)
+    want = []
+    for raw in open(sys.argv[2]).read().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "." not in line or "=" not in line:
+            continue
+        block, kv = line.split(".", 1)
+        k, v = kv.split("=", 1)
+        want.append((block.strip(), k.strip(), v.strip()))
+    lines = []
+    if os.path.exists(target):
+        lines = open(target).read().splitlines()
+    def block_start_re():
+        return re.compile(r'^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\{')
+    # Find each `Name = {` and its matching closing brace at the same indent.
+    def find_block(name):
+        res = []
+        for i, l in enumerate(lines):
+            m = block_start_re().match(l)
+            if m and m.group(2) == name:
+                indent = len(m.group(1))
+                # find closing brace at same indent
+                j = i + 1
+                while j < len(lines):
+                    if re.match(r'^' + r'\s' * indent + r'\},?\s*$', lines[j]):
+                        break
+                    j += 1
+                res.append((i, j, indent))
+        return res
+    for block, key, val in want:
+        blocks = find_block(block)
+        if not blocks:
+            continue  # block not present yet (mod not loaded); nothing to patch
+        for (si, ei, indent) in blocks:
+            key_done = False
+            for j in range(si + 1, ei):
+                km = re.match(r'^(\s*)' + re.escape(key) + r'\s*=\s*([^,]+),?\s*$', lines[j])
+                if km:
+                    lines[j] = km.group(1) + f"{key} = {val},"
+                    key_done = True
+                    break
+            if not key_done:
+                # insert after the opening brace
+                lines.insert(si + 1, (" " * (indent + 4)) + f"{key} = {val},")
+    with open(target, "w") as f:
+        f.write("\n".join(lines) + ("\n" if lines else ""))
+  '';
+
   serverUpdateScript = pkgs.writeScriptBin "zomboid-update" ''
     set -xeu
 
@@ -135,12 +278,37 @@ in {
           sed -i -E 's/-Xms[0-9]+[gGmM]/-Xms${cfg.jvmMinHeap}/g; s/-Xmx[0-9]+[gGmM]/-Xmx${cfg.jvmMaxHeap}/g' "$STATE_DIRECTORY/start-server.sh"
         fi
 
-        # Seed config templates (no-clobber: first boot only). This preserves
-        # live reloadoptions edits and world saves across restarts.
+        # Reconcile the declarative server config onto the live <servername>.ini
+        # EVERY boot (idempotent). Unlike the old single `cp -n` seed — where a
+        # stale file silently kept old values and the whole config could be wiped
+        # by deleting it — this re-asserts every declaratively-declared key each
+        # boot, so nothing can drift or be dropped. PZ's runtime-generated keys
+        # (config it writes back) are preserved by reconcileIni.
         SRV="$STATE_DIRECTORY/Zomboid/Server"
+        SERVER_INI="$STATE_DIRECTORY/Zomboid/Server/${cfg.serverName}.ini"
         mkdir -p "$SRV"
-        cp -n --no-preserve=mode,ownership ${./Configs}/server.ini "$SRV/${cfg.serverName}.ini" 2>/dev/null || true
+        export PATH="${reconcilePath}:$PATH"
+        ${reconcileIni} "$SERVER_INI" ${renderedIni}
+
+        # Discord bot token is a SECRET from agenix, never rendered into the nix
+        # store seed. Inject it on every boot so a reconcile can't empty it.
+        # (Write to a temp desired-file; avoid process substitution in the shell.)
+        if [ -n "${cfg.discordTokenFile}" ] && [ -f "${cfg.discordTokenFile}" ]; then
+          token_seed="$(mktemp)"
+          ( umask 077; echo "DiscordToken=$(cat ${cfg.discordTokenFile})" > "$token_seed" )
+          ${reconcileIni} "$SERVER_INI" "$token_seed"
+          rm -f "$token_seed"
+        fi
+
         cp -n --no-preserve=mode,ownership ${./Configs}/server_spawnregions.lua "$SRV/${cfg.serverName}_spawnregions.lua" 2>/dev/null || true
+
+        # Reconcile the declarative sandbox-var overrides into the runtime
+        # <servername>_SandboxVars.lua. PZ generates/merges this file itself, so
+        # it's not seeded — we assert our pinned keys here every boot instead.
+        SBOX="$SRV/${cfg.serverName}_SandboxVars.lua"
+        if [ -f "$SBOX" ]; then
+          ${reconcileLua} "$SBOX" ${renderedSandbox}
+        fi
 
         # PZ binds TWO UDP sockets: -port (Steam query, defaultPort=cfg.port)
         # and -udpport (RakNet). They MUST differ; passing the same value makes
