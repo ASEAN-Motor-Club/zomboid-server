@@ -121,6 +121,9 @@ with lib; let
         # 1=Hidden 2=Friends 3=Friends+nearby 4=Everyone. AMC wants everyone's
         # token visible on the map (community survival server).
         MapRemotePlayerVisibility = "4";
+        # Welcome message shown to every player on join. Uses <RGB:r,g,b> for
+        # color and <LINE> for line breaks. No dynamic tokens supported.
+        ServerWelcomeMessage = "<RGB:1,0.85,0>★★ ASEAN Motor Club ★★ | Project Zomboid</RGB><LINE><LINE><RGB:0.72,0.86,1.0>━━━━ Welcome, Survivor! ━━━━</RGB><LINE><LINE>► PVE Co-operative<LINE>► Infection: Saliva Only (bites)<LINE>► Based on: Apocalypse preset<LINE>► Spawn: Muldraugh, KY<LINE><LINE><RGB:1,0.85,0>Discord: discord.gg/aseanmotorclub</RGB><LINE>Happy surviving!";
       };
       description = ''
         Declarative `key=value` overrides for the PZ <servername>.ini — the
