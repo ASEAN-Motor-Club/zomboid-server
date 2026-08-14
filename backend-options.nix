@@ -227,6 +227,13 @@ with lib; let
         WorkshopModServerUpdate = {
           RestartDelayMinutes = "5";
         };
+        # ZombieLore: virus transmission mode. Community PVE server —
+        # Saliva Only (2) means only zombie bites can infect, not scratches
+        # or lacerations. (1=Blood+Saliva, 2=Saliva Only, 3=Everyone,
+        # 4=None)
+        ZombieLore = {
+          Transmission = "2";
+        };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
     };
