@@ -107,6 +107,9 @@ with lib; let
         # Arcadia (workshop 3773972040) requires these anti-cheat levels.
         AntiCheatSpeed = "4";
         AntiCheatNoClip = "4";
+        # 1=Hidden 2=Friends 3=Friends+nearby 4=Everyone. AMC wants everyone's
+        # token visible on the map (community survival server).
+        MapRemotePlayerVisibility = "4";
       };
       description = ''
         Declarative `key=value` overrides for the PZ <servername>.ini — the
