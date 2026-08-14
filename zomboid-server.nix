@@ -258,6 +258,9 @@ in {
         StandardInput = "socket";
         StandardOutput = "journal";
         MemoryMax = cfg.memoryMax;
+        # Consumer-set (deployment decision). null (default) → no CPUAffinity
+        # line is emitted. amc-server sets it to keep PZ off Motor Town's cores.
+        CPUAffinity = cfg.cpuAffinity;
       };
 
       # NOTE: the steamcmd update + setup run inside ExecStart (not ExecStartPre),

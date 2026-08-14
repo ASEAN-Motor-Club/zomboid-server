@@ -61,6 +61,17 @@ with lib; let
       default = "12G";
       description = "systemd MemoryMax cgroup limit (heap + JVM/native overhead)";
     };
+    cpuAffinity = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = ''
+        systemd CPUAffinity for the PZ server process (space-separated CPU ids).
+        Left null when this is a deployment decision — the consumer (e.g. amc-server,
+        where PZ runs co-located with the Motor Town server) should set it to keep PZ
+        on cores the game server does NOT pin (MT uses CPUAffinity="0 1 2 3"), so a PZ
+        restart burst can't steal the other server's physical cores.
+      '';
+    };
     adminPasswordFile = mkOption {
       type = types.nullOr types.path;
       default = null;
