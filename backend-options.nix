@@ -220,6 +220,31 @@ with lib; let
     # want to pin on every boot (same model as `settings` for the .ini): a small
     # block-scoped Lua rewrite, keyed by the mod block (e.g. the auto-restart
     # mod's WorkshopModServerUpdate) then by the option key.
+    # --- Workshop-update Discord notifier ---
+    # The auto-restart mod (ServerWorkshopModAutoRestartB42) prints the exact
+    # updated mod to the server journal (`[WorkshopModServerUpdate] Update found
+    # for: <title>`), but only to the console — players never see it. This option
+    # points at a host-side systemd service that tails the PZ unit's journal and
+    # forwards each "Update found for:" line to a Discord webhook, so the channel
+    # sees WHICH mod updated before the auto-restart bounce. Purely host-side; the
+    # mod itself is untouched (its author forbids edits without permission).
+    #
+    # The in-game countdown timer is left exactly as the mod ships it. This only
+    # mirrors the already-logged detection line to Discord.
+    updateNotifier = mkOption {
+      type = types.submodule {
+        options = {
+          enable = mkEnableOption "Discord webhook notifier for workshop updates";
+          webhookFile = mkOption {
+            type = types.nullOr types.path;
+            default = null;
+            description = "Path to a file containing the Discord webhook URL (an agenix secret). Never committed.";
+          };
+        };
+      };
+      default = {};
+      description = "Forward the auto-restart mod's 'Update found for:' journal line to a Discord webhook. Requires the webhook URL as an agenix secret.";
+    };
     sandboxVars = mkOption {
       type = types.attrsOf (types.attrsOf types.str);
       default = {

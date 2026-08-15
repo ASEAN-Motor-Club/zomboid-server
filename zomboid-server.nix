@@ -188,6 +188,11 @@ in {
   };
 
   config = mkIf cfg.enable {
+    assertions = [{
+      assertion = !cfg.updateNotifier.enable || cfg.updateNotifier.webhookFile != null;
+      message = "services.zomboid-server.updateNotifier.webhookFile must be set when updateNotifier.enable = true";
+    }];
+
     networking.firewall = lib.mkIf cfg.openFirewall {
       allowedUDPPorts = [cfg.port (cfg.port + 1)];
     };
@@ -339,6 +344,43 @@ in {
       enable = cfg.enableLogStreaming;
       serverLogsPath = "${zomboidDir}/Logs";
       tag = cfg.logsTag;
+    };
+
+    # Host-side workshop-update notifier. The auto-restart mod logs "Update found
+    # for: <mod>" to the PZ unit's journal (console only — players don't see it).
+    # This tails that journal and forwards each detection to a Discord webhook.
+    # The mod itself is untouched; this only mirrors an already-logged line.
+    systemd.services.zomboid-update-notify = lib.mkIf cfg.updateNotifier.enable {
+      wantedBy = ["multi-user.target"];
+      after = ["network-online.target" "zomboid-server.service"];
+      wants = ["network-online.target"];
+      description = "Forward PZ workshop-update detections to Discord";
+      serviceConfig = {
+        Type = "simple";
+        Restart = "always";
+        RestartSec = "5";
+      };
+      path = with pkgs; [ curl coreutils gnused systemd ];
+      script = ''
+        set -u
+        WEBHOOK="$(cat "${cfg.updateNotifier.webhookFile}")"
+        # Tail the PZ unit's journal live. Match the mod's detection line and
+        # forward it. curl the JSON via --data-binary so the mod title (which may
+        # contain spaces, brackets, quotes) is handled safely by jq, not shell.
+        journalctl -u zomboid-server -o cat -f --no-pager \
+        | while IFS= read -r line; do
+            case "$line" in
+              *"Update found for:"*)
+                title=''${line#*Update found for: }
+                payload=$(${pkgs.jq}/bin/jq -nc --arg t "$title" \
+                  '{content: ("[Auto-Restart] A mod updated: **\"" + $t + "\"** — the PZ server will restart to re-sync.")}')
+                printf '%s' "$payload" | curl -fsS -o /dev/null \
+                  -H "Content-Type: application/json" \
+                  --data-binary @- "$WEBHOOK" || true
+                ;;
+            esac
+          done
+      '';
     };
   };
 }
