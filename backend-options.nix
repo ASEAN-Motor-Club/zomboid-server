@@ -269,6 +269,14 @@ with lib; let
         ZombieLore = {
           Transmission = "2";
         };
+        # SandboxVars: electricity grid shutdown timeline. ElecShut is the
+        # preset (3 = 14 days - 2 months); ElecShutModifier is the exact day
+        # offset and overrides the preset range (30 days after start date).
+        # Top-level keys inside the SandboxVars = { ... } block.
+        SandboxVars = {
+          ElecShut = "3";
+          ElecShutModifier = "30";
+        };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
     };
