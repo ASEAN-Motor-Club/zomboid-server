@@ -140,7 +140,11 @@ with lib; let
         # collection: it polls Steam and self-restarts when a workshop item
         # updates, killing mid-day "some mods updated" lockouts.
         "3659447892"
-        # --- AMC Zomboid Modpack (Steam collection 3776174669, 65 items) ---
+        # --- AMC Zomboid Modpack (Steam collection 3776174669, 64 items) ---
+        # NOTE: Item Condition Overlay (3641048285 / ItemCondition_KingEJ) removed
+        # deliberately on 2026-08-16 — visual conflicts with another mod. Collection
+        # edit handled by operator. This is a deliberate divergence until the
+        # collection also drops it.
         "2366717227" "2757712197" "2791656602" "2847184718" "2896041179"
         "2956146279" "3077900375" "3390487814" "3394044313" "3396446795"
         "3405033818" "3416873508" "3423660713" "3430224478" "3432006285"
@@ -148,7 +152,7 @@ with lib; let
         "3492967631" "3495594275" "3502080466" "3504700167" "3508537032"
         "3526968739" "3536052310" "3543612325" "3546314080" "3555791254"
         "3565697910" "3570250507" "3576056135" "3577903007" "3597673472"
-        "3635591071" "3641048285" "3648051123" "3671176591" "3680577450"
+        "3635591071" "3648051123" "3671176591" "3680577450"
         "3690780070" "3716522633" "3723726293" "3725497089" "3734639991"
         "3739256725" "3744455714" "3747396551" "3749026793" "3755993986"
         "3763470184" "3625933422" "3780965224" "3387539308" "3718216106"
@@ -172,7 +176,7 @@ with lib; let
         "Neat_Building" "Ivmakk_RestoreEngineQuality" "Waterpipes"
         "Ivmakk_BoilingEggs" "WeatherMoodles" "TwisTonFireFasterActions"
         "BetterGeneratorInfo" "VanillaFoodsExpanded" "LongTermPreservationExtended"
-        "RealisticDash" "ItemCondition_KingEJ" "InjuredZombiesStumble"
+        "RealisticDash" "InjuredZombiesStumble"
         "dustinguished_bolt_cutters" "SolarFloodlight" "RealisticCookingTimes"
         "VHSSkillNameInTooltip" "Neat_Rocco" "ComputerModkum" "SeedSeasonIndicator"
         "NewMusic" "PagerMod" "FoodDrying" "CVI" "GasPumpIndicator"
