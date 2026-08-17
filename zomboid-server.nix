@@ -191,6 +191,10 @@ in {
     assertions = [{
       assertion = !cfg.updateNotifier.enable || cfg.updateNotifier.webhookFile != null;
       message = "services.zomboid-server.updateNotifier.webhookFile must be set when updateNotifier.enable = true";
+    }
+    {
+      assertion = !cfg.statusNotifier.enable || cfg.statusNotifier.webhookFile != null;
+      message = "services.zomboid-server.statusNotifier.webhookFile must be set when statusNotifier.enable = true";
     }];
 
     networking.firewall = lib.mkIf cfg.openFirewall {
@@ -381,6 +385,37 @@ in {
             esac
           done
       '';
+    };
+
+    # Periodic server status -> single Discord message (edit-in-place). Runs
+    # scripts/pz_status.py on a timer; the script queries A2S on the query port
+    # and POST-or-PATCHes one message so the channel stays uncluttered.
+    systemd.services.zomboid-status-notify = lib.mkIf cfg.statusNotifier.enable {
+      description = "Refresh PZ server status message on Discord";
+      serviceConfig = {
+        Type = "oneshot";
+      };
+      path = with pkgs; [ python3 ];  # script uses stdlib only, but pin python3
+      script = ''
+        set -u
+        WEBHOOK="$(cat "${cfg.statusNotifier.webhookFile}")"
+        STATE="${dataDir}/zomboid-status-msg-id"
+        exec ${pkgs.python3}/bin/python3 ${./scripts/pz_status.py} \
+          --webhook-url "$WEBHOOK" \
+          --state-file "$STATE" \
+          --host 127.0.0.1 \
+          --port ${toString cfg.port}
+      '';
+    };
+
+    systemd.timers.zomboid-status-notify = lib.mkIf cfg.statusNotifier.enable {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = cfg.statusNotifier.interval;
+        Persistent = true;
+        # don't stack if a tick runs long; the refresh is idempotent anyway
+        Unit = "zomboid-status-notify.service";
+      };
     };
   };
 }

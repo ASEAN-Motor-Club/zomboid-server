@@ -252,6 +252,31 @@ with lib; let
       default = {};
       description = "Forward the auto-restart mod's 'Update found for:' journal line to a Discord webhook. Requires the webhook URL as an agenix secret.";
     };
+    # --- Declarative server status → single Discord message (edit-in-place) ---
+    # A systemd timer runs scripts/pz_status.py every `interval` and maintains
+    # ONE persistent message in the channel: first run POSTs it, later runs
+    # PATCH-edit the same message (no channel clutter). The message id is kept
+    # in the state directory. Reports online/offline + player count + usernames
+    # via the Steam A2S protocol on the query port.
+    statusNotifier = mkOption {
+      type = types.submodule {
+        options = {
+          enable = mkEnableOption "Discord webhook status notifier (online/offline + players)";
+          webhookFile = mkOption {
+            type = types.nullOr types.path;
+            default = null;
+            description = "Path to a file containing the Discord webhook URL (an agenix secret). Never committed.";
+          };
+          interval = mkOption {
+            type = types.str;
+            default = "*:0/1";
+            description = "systemd .timer OnCalendar schedule for the status refresh (default: every minute).";
+          };
+        };
+      };
+      default = {};
+      description = "Keep a single Discord status message (server online/offline + player count + usernames) updated on a timer.";
+    };
     sandboxVars = mkOption {
       type = types.attrsOf (types.attrsOf types.str);
       default = {
