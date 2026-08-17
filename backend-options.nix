@@ -272,10 +272,13 @@ with lib; let
         # SandboxVars: electricity grid shutdown timeline. ElecShut is the
         # preset (3 = 14 days - 2 months); ElecShutModifier is the exact day
         # offset and overrides the preset range (30 days after start date).
+        # MultiHitZombies: melee weapons strike multiple zombies per swing.
+        # true = multi-hit enabled (community survival server wants it).
         # Top-level keys inside the SandboxVars = { ... } block.
         SandboxVars = {
           ElecShut = "3";
           ElecShutModifier = "30";
+          MultiHitZombies = "true";
         };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
