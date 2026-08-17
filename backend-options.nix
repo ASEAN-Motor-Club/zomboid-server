@@ -111,6 +111,8 @@ with lib; let
         PauseEmpty = "true";
         GlobalChat = "true";
         NoFire = "true";
+        # Both admins and players can claim safehouses (community server).
+        PlayerSafehouse = "true";
         # Arcadia RV interiors must load BEFORE the base map or entering an RV
         # door teleports into the void. vehicle_interior_arcadia75 attaches to
         # Muldraugh lots; keep it before Muldraugh in Map= (PZ loads L-to-R).
