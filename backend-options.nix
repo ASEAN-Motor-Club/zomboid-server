@@ -113,6 +113,15 @@ with lib; let
         NoFire = "true";
         # Both admins and players can claim safehouses (community server).
         PlayerSafehouse = "true";
+        # Safehouse rules (operator request):
+        #   AllowRespawn=true  -> players can respawn at their safehouse.
+        #   AllowTrepass=false -> non-members can't enter others' safehouses.
+        #   AllowFire=false    -> no fires inside safehouses.
+        #   AllowLoot=false    -> members can't loot each other's safehouses.
+        SafehouseAllowRespawn = "true";
+        SafehouseAllowTrepass = "false";
+        SafehouseAllowFire = "false";
+        SafehouseAllowLoot = "false";
         # Arcadia RV interiors must load BEFORE the base map or entering an RV
         # door teleports into the void. vehicle_interior_arcadia75 attaches to
         # Muldraugh lots; keep it before Muldraugh in Map= (PZ loads L-to-R).
