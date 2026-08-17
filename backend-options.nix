@@ -98,8 +98,8 @@ with lib; let
       type = types.attrsOf types.str;
       default = {
         Public = "true";
-        PublicName = "★★ ASEAN Motor Club ★★ | Project Zomboid";
-        PublicDescription = "<RGB:1,0.85,0>ASEAN Motor Club</RGB> community survival server. Apocalypse difficulty, PVE. Join us: aseanmotorclub.com";
+        PublicName = "(SEA) (COOP) ASEAN Motor Club | PZ Modded B42";
+        PublicDescription = "ASEAN Motor Club community Project Zomboid server. Apocalypse, Multihit, PVE, Co-op. | aseanmotorclub.com";
         Password = "";
         # PingLimit: 0 = DISABLED. SEA players have unstable/bad ping; a
         # ping-based kick unfairly locks them out.
