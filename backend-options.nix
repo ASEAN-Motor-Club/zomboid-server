@@ -106,7 +106,7 @@ with lib; let
         PingLimit = "0";
         MaxPlayers = "32";
         ServerPlayerCount = "32";
-        MaxAccountsPerUser = "2";
+        MaxAccountsPerUser = "5";
         PVP = "false";
         PauseEmpty = "true";
         GlobalChat = "true";
