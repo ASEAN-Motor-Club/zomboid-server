@@ -314,6 +314,11 @@ with lib; let
         ZombieLore = {
           Transmission = "2";
         };
+        # Tanks Have Propane (3676347667): allow gas station pumps as a propane
+        # refill source (default false = only Fossoil/Gas2Go storage tanks count).
+        TanksHavePropane = {
+          AllowGasPumps = "true";
+        };
         # SandboxVars: electricity grid shutdown timeline. ElecShut is the
         # preset (3 = 14 days - 2 months); ElecShutModifier is the exact day
         # offset and overrides the preset range (30 days after start date).
