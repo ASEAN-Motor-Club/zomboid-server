@@ -115,11 +115,11 @@ with lib; let
         PlayerSafehouse = "true";
         # Safehouse rules (operator request):
         #   AllowRespawn=true  -> players can respawn at their safehouse.
-        #   AllowTrepass=false -> non-members can't enter others' safehouses.
+        #   AllowTrepass=true  -> non-members can enter others' safehouses.
         #   AllowFire=false    -> no fires inside safehouses.
         #   AllowLoot=false    -> members can't loot each other's safehouses.
         SafehouseAllowRespawn = "true";
-        SafehouseAllowTrepass = "false";
+        SafehouseAllowTrepass = "true";
         SafehouseAllowFire = "false";
         SafehouseAllowLoot = "false";
         # Arcadia RV interiors must load BEFORE the base map or entering an RV
@@ -173,11 +173,12 @@ with lib; let
         "3386644536" "3566088272" "3281755175" "3385623534" "3470852353"
         "3776262249" "3773972040" "3683878228" "3664207077" "3774826484"
         # --- Deliberate server-side ADDS beyond the collection (2026-08-18) ---
-        # Tanks Have Propane (3676347667), Jeeve's Claims (3674013419),
-        # CoolerPlus (3688375772). Confirmed B42-loadable (42/ folder, correct
-        # mod.info id). NOT in the Steam collection yet — operator must add all
-        # three to collection 3776174669 or clients get a mod-mismatch kick.
-        "3676347667" "3674013419" "3688375772"
+        # Tanks Have Propane (3676347667), Jeeve's Claims (3674013419).
+        # NOTE: CoolerPlus (3688375772 / CoolerPlus) was added with these on
+        # 2026-08-18 but removed 2026-08-19 — it did not work on the live
+        # server. The other two are confirmed B42-loadable (42/ folder, correct
+        # mod.info id) and are deliberate server-side ADDS.
+        "3676347667" "3674013419"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -206,8 +207,9 @@ with lib; let
         "PingItemsFriends" "ArcadiaRVInterior_B42_MP" "ArcadiaRVInterior_B42_Vanilla"
         "B42FRUsedCarsAnimAlpha" "FRCert_RVsOnly_B42" "JumboTreeIndoorFix"
         # --- Deliberate server-side ADDS beyond the collection (2026-08-18) ---
-        # Tanks Have Propane, Jeeve's Claims, CoolerPlus (see workshopItems note).
-        "TanksHavePropane42" "JeevesClaims" "CoolerPlus"
+        # Tanks Have Propane, Jeeve's Claims (CoolerPlus removed 2026-08-19, see
+        # workshopItems note).
+        "TanksHavePropane42" "JeevesClaims"
       ];
       description = "Internal mod IDs, rendered as the Mods= line (order preserved). MUST keep the auto-restart mod first.";
     };
