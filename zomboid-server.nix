@@ -195,6 +195,10 @@ in {
     {
       assertion = !cfg.statusNotifier.enable || cfg.statusNotifier.webhookFile != null;
       message = "services.zomboid-server.statusNotifier.webhookFile must be set when statusNotifier.enable = true";
+    }
+    {
+      assertion = !cfg.changelogNotifier.enable || cfg.changelogNotifier.webhookFile != null;
+      message = "services.zomboid-server.changelogNotifier.webhookFile must be set when changelogNotifier.enable = true";
     }];
 
     networking.firewall = lib.mkIf cfg.openFirewall {
@@ -415,6 +419,34 @@ in {
         Persistent = true;
         # don't stack if a tick runs long; the refresh is idempotent anyway
         Unit = "zomboid-status-notify.service";
+      };
+    };
+    # Mod/changelog → Discord. Polls the zomboid-server GitHub repo for new
+    # master commits, diffs backend-options.nix, and posts readable mod/config
+    # changes. Last-seen SHA kept in the state dir so we never replay history.
+    systemd.services.zomboid-changelog-notify = lib.mkIf cfg.changelogNotifier.enable {
+      description = "Post zomboid-server mod/config changelog to Discord";
+      serviceConfig = {
+        Type = "oneshot";
+      };
+      path = with pkgs; [ curl coreutils ];
+      script = ''
+        set -u
+        WEBHOOK="$(cat "${cfg.changelogNotifier.webhookFile}")"
+        STATE="${dataDir}/zomboid-changelog-last"
+        exec ${pkgs.python3}/bin/python3 ${./scripts/pz_changelog.py} \
+          --webhook-url "$WEBHOOK" \
+          --state-file "$STATE"
+      '';
+    };
+
+    systemd.timers.zomboid-changelog-notify = lib.mkIf cfg.changelogNotifier.enable {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = cfg.changelogNotifier.interval;
+        Persistent = true;
+        # idle so a slow poll (Steam title lookup) can't overlap itself
+        Unit = "zomboid-changelog-notify.service";
       };
     };
   };
