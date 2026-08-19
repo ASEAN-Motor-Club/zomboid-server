@@ -190,6 +190,10 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap = ap.parse_args()
 
+    # strip any accidental surrounding whitespace/newline from the webhook URL
+    if ap.webhook_url:
+        ap.webhook_url = ap.webhook_url.strip() or None
+
     # seeded to current HEAD on first run so we don't replay history
     state_last = None
     if ap.state_file:
@@ -202,8 +206,10 @@ def main():
     head, new_shas = list_commits(state_last)
     new_shas = new_shas[::-1]   # oldest first
 
-    if not new_shas:
-        if head:
+    if state_last is None or not new_shas:
+        # first run (nothing seen yet) or no new commits — just persist HEAD,
+        # never post a backlog of history on first contact.
+        if head and ap.state_file:
             with open(ap.state_file, "w") as f:
                 f.write(head)
         return 0
