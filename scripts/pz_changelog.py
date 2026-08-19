@@ -176,7 +176,10 @@ def build_embed(commit):
 
 def post(url, payload):
     data = json.dumps(payload).encode()
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+    # Discord rejects a Python-urllib default User-Agent with 403 — send a real one
+    req = urllib.request.Request(url, data=data,
+        headers={"Content-Type": "application/json", "User-Agent": "amc-changelog/1.0"},
+        method="POST")
     with urllib.request.urlopen(req, timeout=20) as r:
         code = r.getcode()
         r.read()
@@ -214,23 +217,31 @@ def main():
                 f.write(head)
         return 0
 
+    def write_state(sha):
+        if ap.state_file and sha:
+            with open(ap.state_file, "w") as f:
+                f.write(sha)
+
     for sha in new_shas:
         commit = get_commit(sha)
         emb = build_embed(commit)
         if emb is None:
+            # not a mod/config change — advance past it silently
+            write_state(sha)
             continue
         if ap.dry_run or not ap.webhook_url:
             print(json.dumps(emb, indent=2))
-        else:
-            try:
-                post(ap.webhook_url, emb)
-                time.sleep(0.3)
-            except Exception as e:
-                print(f"POST failed for {sha}: {e}", file=sys.stderr)
+            write_state(sha)
+            continue
+        try:
+            post(ap.webhook_url, emb)
+            time.sleep(0.3)
+            write_state(sha)
+        except Exception as e:
+            # don't advance past a failed post so it retries on the next run
+            print(f"POST failed for {sha}: {e}", file=sys.stderr)
+            break
 
-    if head:
-        with open(ap.state_file, "w") as f:
-            f.write(head)
     return 0
 
 
