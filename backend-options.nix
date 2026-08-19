@@ -297,6 +297,30 @@ with lib; let
       default = {};
       description = "Keep a single Discord status message (server online/offline + player count + usernames) updated on a timer.";
     };
+    # --- Mod/config changelog → Discord ---
+    # A systemd timer runs scripts/pz_changelog.py which polls the zomboid-server
+    # GitHub repo for new commits to master, diffs backend-options.nix, and posts
+    # a readable per-change embed (➕ added mod / ➖ removed mod / ⚙️ config change
+    # for vanilla or mod settings). Last-seen SHA persisted in the state dir.
+    changelogNotifier = mkOption {
+      type = types.submodule {
+        options = {
+          enable = mkEnableOption "Discord changelog webhook for mod/config changes";
+          webhookFile = mkOption {
+            type = types.nullOr types.path;
+            default = null;
+            description = "Path to a file containing the Discord webhook URL (an agenix secret). Never committed.";
+          };
+          interval = mkOption {
+            type = types.str;
+            default = "*:0/15";
+            description = "systemd .timer OnCalendar schedule for polling the repo (default: every 15 min).";
+          };
+        };
+      };
+      default = {};
+      description = "Post readable mod-addition/removal and config-change entries for zomboid-server to a Discord webhook on a timer.";
+    };
     sandboxVars = mkOption {
       type = types.attrsOf (types.attrsOf types.str);
       default = {
