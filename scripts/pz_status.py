@@ -175,6 +175,45 @@ def advance_clock(state, running, now_wall):
     return state
 
 
+def try_reanchor_from_save(state, map_t_path):
+    """If 0 players and map_t.bin got a fresh write since our last anchor,
+    snap the clock to it (at 0 players PauseEmpty freezes the world, so the
+    save IS the authoritative current time). Guards against stale/corrupt data
+    so we never jump backward or to a nonsense value.
+
+    Returns the (possibly updated) state.
+    """
+    if state is None or not map_t_path or not os.path.exists(map_t_path):
+        return state
+    last_anchor = state.get("anchor_mtime", 0.0)
+    try:
+        mtime = os.path.getmtime(map_t_path)
+    except OSError:
+        return state
+    # only act on a save NEWER than one we've already incorporated
+    if mtime <= last_anchor:
+        return state
+    new_sec = seed_in_game_seconds(map_t_path)
+    if new_sec is None:
+        return state
+    cur_sec = state.get("current_sec", 0)
+    # At 0 players the world is FROZEN, so a genuine fresh save can only match
+    # our clock within poll lag (a few in-game minutes). A value substantially
+    # BEHIND means it's a stale snapshot (save predates our last accrue), which
+    # would wrongly rewind the clock. Reject backward jumps beyond a small
+    # buffer (5 in-game minutes).
+    if new_sec < cur_sec - 5 * 60:
+        state["anchor_mtime"] = mtime  # remember it; stop re-checking this file
+        return state
+    # reject wild forward leaps too (corrupt / unrelated save)
+    if new_sec - cur_sec > 6 * 3600:
+        state["anchor_mtime"] = mtime
+        return state
+    state["current_sec"] = new_sec
+    state["anchor_mtime"] = mtime
+    return state
+
+
 # --- A2S ----------------------------------------------------------------
 def udp_query(host, port, payload, timeout=4):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -331,10 +370,26 @@ def main():
         # unreadable, from nothing -> no time line until a good seed appears).
         sec = seed_in_game_seconds(args.map_t_file)
         if sec is not None:
-            st = {"current_sec": sec, "last_wall": now_wall, "running": running}
+            try:
+                amt = os.path.getmtime(args.map_t_file)
+            except OSError:
+                amt = 0.0
+            st = {"current_sec": sec, "last_wall": now_wall, "running": running,
+                  "anchor_mtime": amt}
             # seed counts as running-from-now; no accrual for the whole past
     if st is not None:
+        # Backfill anchor_mtime for state written before this feature existed:
+        # consider the CURRENT save already incorporated, so we don't snap the
+        # live clock back to it on the first run (it's likely stale/behind).
+        if "anchor_mtime" not in st:
+            try:
+                st["anchor_mtime"] = os.path.getmtime(args.map_t_file)
+            except (OSError, TypeError):
+                st["anchor_mtime"] = 0.0
         st = advance_clock(st, running, now_wall)
+        # at 0 players (frozen world) opportunistically re-anchor to a fresh save
+        if players == 0:
+            st = try_reanchor_from_save(st, args.map_t_file)
         save_state(clock_state_path, st)
         if status is not None:
             cur = game_sec_to_datetime(st["current_sec"])
