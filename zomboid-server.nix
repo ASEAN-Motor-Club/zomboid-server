@@ -410,6 +410,7 @@ in {
         exec ${pkgs.python3}/bin/python3 ${./scripts/pz_status.py} \
           --webhook-url "$WEBHOOK" \
           --state-file "$STATE" \
+          --clock-state-file "${dataDir}/zomboid-clock-state.json" \
           --host 127.0.0.1 \
           --port ${toString cfg.port} \
           --map-t-file "${saveDir}/map_t.bin"
