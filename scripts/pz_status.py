@@ -214,6 +214,49 @@ def try_reanchor_from_save(state, map_t_path):
     return state
 
 
+def trigger_fifo_save_and_wait(fifo_path, map_t_path, state, wait_max=25):
+    """Send `save` to the PZ console fifo, then wait for map_t.bin to be
+    rewritten (mtime newer than before), up to wait_max seconds. Returns True
+    if the save made progress.
+
+    This lets the notifier re-anchor the clock at a 0-player moment WITHOUT
+    restarting the game server: a fifo `save` writes a fresh map_t.bin, and we
+    then re-anchor to it.
+
+    Blocking-safe: opens the fifo non-blocking so a missing reader (game down
+    / mid-restart) can never hang the notifier.
+    """
+    if not fifo_path or not os.path.exists(fifo_path):
+        return False
+    if not map_t_path or not os.path.exists(map_t_path):
+        return False
+    try:
+        before = os.path.getmtime(map_t_path)
+    except OSError:
+        before = 0.0
+    try:
+        # O_NONBLOCK so we error immediately (ENXIO/BlockingIOError) if the game
+        # has no console reader right now, instead of blocking forever.
+        fd = os.open(fifo_path, os.O_WRONLY | os.O_NONBLOCK)
+        try:
+            os.write(fd, b"save\n")
+        finally:
+            os.close(fd)
+    except OSError:
+        return False
+    # poll map_t for a new mtime
+    deadline = time.time() + wait_max
+    while time.time() < deadline:
+        try:
+            now_m = os.path.getmtime(map_t_path)
+        except OSError:
+            now_m = 0.0
+        if now_m > before:
+            return True
+        time.sleep(0.5)
+    return False
+
+
 # --- A2S ----------------------------------------------------------------
 def udp_query(host, port, payload, timeout=4):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -346,6 +389,11 @@ def main():
     ap.add_argument("--port", type=int, default=16261)
     ap.add_argument("--map-t-file", default=None,
                     help="Path to the world save map_t.bin; used as the clock seed.")
+    ap.add_argument("--pz-fifo", default=None,
+                    help="Path to the PZ server console FIFO (e.g. /run/zomboid-server/"
+                         "server.fifo). When set, the notifier sends a mid-flight "
+                         "`save` at each 0-player transition so it can re-anchor the "
+                         "clock to a fresh map_t.bin without restarting the server.")
     args = ap.parse_args()
 
     info = a2s_info(args.host, args.port)
@@ -386,9 +434,17 @@ def main():
                 st["anchor_mtime"] = os.path.getmtime(args.map_t_file)
             except (OSError, TypeError):
                 st["anchor_mtime"] = 0.0
+        # was there someone online at the LAST tick? (persisted `running` is
+        # the previous state before advance_clock rewrites it below)
+        was_running = bool(st.get("running"))
         st = advance_clock(st, running, now_wall)
-        # at 0 players (frozen world) opportunistically re-anchor to a fresh save
+        # At a 0-player transition (players online last tick -> now 0), the
+        # world just froze. Trigger a mid-flight `save` so map_t.bin is fresh,
+        # then re-anchor to it -- no server restart required. Also
+        # opportunistically re-anchor on any later fresh save at 0 players.
         if players == 0:
+            if was_running and args.pz_fifo:
+                trigger_fifo_save_and_wait(args.pz_fifo, args.map_t_file, st)
             st = try_reanchor_from_save(st, args.map_t_file)
         save_state(clock_state_path, st)
         if status is not None:
