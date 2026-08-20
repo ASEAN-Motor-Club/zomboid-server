@@ -413,7 +413,8 @@ in {
           --clock-state-file "${dataDir}/zomboid-clock-state.json" \
           --host 127.0.0.1 \
           --port ${toString cfg.port} \
-          --map-t-file "${saveDir}/map_t.bin"
+          --map-t-file "${saveDir}/map_t.bin" \
+          --pz-fifo "/run/${cfg.stateDirectory}/server.fifo"
       '';
     };
 
