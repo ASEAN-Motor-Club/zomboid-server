@@ -138,6 +138,11 @@ with lib; let
         # Welcome message shown to every player on join. Uses <RGB:r,g,b> for
         # color and <LINE> for line breaks. No dynamic tokens supported.
         ServerWelcomeMessage = "<RGB:1,0.85,0>** ASEAN Motor Club ** | Project Zomboid</RGB><LINE><LINE><RGB:0.72,0.86,1.0>--- Welcome, Survivor! ---</RGB><LINE><LINE><RGB:1,0.85,0>Discord: aseanmotorclub.com</RGB><LINE><LINE>> PVE Co-operative<LINE>> Infection: Saliva Only<LINE>> Based on: Apocalypse<LINE>> Spawn: Muldraugh, KY<LINE><LINE>Happy surviving!";
+        # ServerWelcomeMessage renders in the chat panel, so PZ caps it at
+        # ChatMessageCharacterLimit (default 200). The welcome string is ~326
+        # raw chars WITH format tags, hence the truncated tail incl. the Discord
+        # link. Raise to the max (1024) so the full message + link always fit.
+        ChatMessageCharacterLimit = "1024";
       };
       description = ''
         Declarative `key=value` overrides for the PZ <servername>.ini — the
