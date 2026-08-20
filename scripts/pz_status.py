@@ -12,10 +12,54 @@ Protocol notes (verified 2026-08):
     Requires the challenge-response handshake when the server answers 0x41.
   * The RakNet game-data port (+1) is NOT A2S — don't probe it here.
 """
-import argparse, json, os, socket, struct, sys, time, urllib.request, urllib.error
+import argparse, datetime, json, os, socket, struct, sys, time, urllib.request, urllib.error
 
 A2S_INFO = b"\xff\xff\xff\xff\x54Source Engine Query\x00"
 A2S_PLAYER = b"\xff\xff\xff\xff\x55Source Engine Query\x00"
+
+# PZ's fictional calendar zero-point: the game starts in-game on 1993-07-09
+# 09:00 local, and "days survived" counts whole in-game days elapsed since
+# then. Displayed date = zero point + days_survived.
+IN_GAME_EPOCH = datetime.datetime(1993, 7, 9, 9, 0)
+# Byte offsets in <save>/map_t.bin (the world state file PZ rewrites on save).
+# Verified against the live B42 save (2026-08): days_survived [15], the file's
+# own day-of-month [31]+1 and month [35]+1 cross-check to the same calendar
+# date as epoch + days_survived. These offsets are stable across the observed
+# B42 saves but ARE structure-sensitive — if they ever read garbage, readers
+# fail closed (no time field) rather than printing a wrong date.
+MAP_T_DAYS_OFFSET = 15
+MAP_T_DAY_OFFSET = 31
+MAP_T_MONTH_OFFSET = 35
+
+
+def read_in_game_time(map_t_path):
+    """Return (display_date, days_survived) or (None, None) if unreadable.
+
+    The save is only written on the game's save cadence (SaveWorldEveryMinutes
+    / periodic), so this is the *last-persisted* in-game date, not a live
+    ticking clock — which matches the design: when nobody is online the world
+    clock is frozen (PauseEmpty=true), so the persisted date holds; when
+    players are present it advances between saves.
+    """
+    if not map_t_path or not os.path.exists(map_t_path):
+        return None, None
+    try:
+        with open(map_t_path, "rb") as f:
+            d = f.read()
+        if len(d) <= max(MAP_T_DAY_OFFSET, MAP_T_MONTH_OFFSET):
+            return None, None
+        days = d[MAP_T_DAYS_OFFSET]
+        # optional cross-check: the file also stores its own day/month; if they
+        # wildly disagree with the derived date, the offset model is wrong.
+        day_f = d[MAP_T_DAY_OFFSET] + 1
+        month_f = d[MAP_T_MONTH_OFFSET] + 1
+        derived = IN_GAME_EPOCH + datetime.timedelta(days=days)
+        # allow 2-day tolerance (save lag + calendar edge); else fail safe
+        if abs((derived.day) - day_f) > 2 or abs(derived.month - month_f) > 1:
+            return None, None
+        return derived.strftime("%Y-%m-%d %H:%M"), days
+    except (OSError, ValueError):
+        return None, None
 
 
 def udp_query(host, port, payload, timeout=4):
@@ -134,15 +178,32 @@ def build_embed(status):
         title = "Project Zomboid — OFFLINE"
         color = 0xC0392B
         body = "The PZ server is not reachable on the query port right now."
-    return {
-        "content": None,
-        "embeds": [{
-            "title": title,
-            "color": color,
-            "description": body,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        }],
+
+    embed = {
+        "title": title,
+        "color": color,
+        "description": body,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+
+    # In-game date/time. PauseEmpty=true freezes the world clock at 0 players,
+    # so "players == 0" is the stopped signal; when players are present the
+    # persisted save date reflects (and advances with) in-game time.
+    map_t = status.get("map_t_path")
+    if online and map_t:
+        date_str, days = read_in_game_time(map_t)
+        if date_str is not None and days is not None:
+            day_no = int(days) + 1
+            if players == 0:
+                time_line = f"⏸ {date_str} (Day {day_no} — stopped: no players)"
+            else:
+                time_line = f"🕐 {date_str} (Day {day_no})"
+            embed["fields"] = [{
+                "name": "In-game time",
+                "value": time_line,
+                "inline": True,
+            }]
+    return {"content": None, "embeds": [embed]}
 
 
 def main():
@@ -151,6 +212,9 @@ def main():
     ap.add_argument("--state-file", required=True)
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=16261)
+    ap.add_argument("--map-t-file", default=None,
+                    help="Path to the world save map_t.bin; enables the in-game "
+                         "date field in the status message.")
     args = ap.parse_args()
 
     info = a2s_info(args.host, args.port)
@@ -160,6 +224,8 @@ def main():
         names = a2s_player_names(args.host, args.port) or []
         status = {"online": True, "players": info["players"],
                   "max_players": info["max_players"], "names": names}
+        if args.map_t_file:
+            status["map_t_path"] = args.map_t_file
 
     payload = build_embed(status)
 

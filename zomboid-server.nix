@@ -10,6 +10,9 @@ with lib; let
   # Paths
   dataDir = "/var/lib/${cfg.stateDirectory}";
   zomboidDir = "${dataDir}/Zomboid";
+  # World save root for <serverName> (PZ writes map_t.bin / erosion.ini here on
+  # save). The status notifier reads map_t.bin from here for the in-game date.
+  saveDir = "${zomboidDir}/Saves/Multiplayer/${cfg.serverName}";
 
   # Game Settings
   gameAppId = "380870"; # Project Zomboid Dedicated Server (Steam App ID)
@@ -408,7 +411,8 @@ in {
           --webhook-url "$WEBHOOK" \
           --state-file "$STATE" \
           --host 127.0.0.1 \
-          --port ${toString cfg.port}
+          --port ${toString cfg.port} \
+          --map-t-file "${saveDir}/map_t.bin"
       '';
     };
 
