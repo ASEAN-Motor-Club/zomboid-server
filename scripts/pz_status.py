@@ -17,25 +17,19 @@ import argparse, datetime, json, os, socket, struct, sys, time, urllib.request, 
 A2S_INFO = b"\xff\xff\xff\xff\x54Source Engine Query\x00"
 A2S_PLAYER = b"\xff\xff\xff\xff\x55Source Engine Query\x00"
 
-# Byte layout of <save>/map_t.bin — authoritative from decompiled
-# zombie.GameTime.save()/load() (verified 2026-08 against the B42 jar):
-# the file is the raw big-endian DataOutputStream stream (no header/wrapper):
-#   [0..4)  version bytes
-#   [4..8)  multiplier (float)
-#   [8..12) nightSurvived (int)   <- days elapsed
-#   [12..16) targetZombies (int)
-#   [16..20) lastTimeOfDay (float, hours, previous frame)
-#   [20..24) timeOfDay (float, hours)          <- the clock
-#   [24..28) day (int, 0-indexed)
-#   [28..32) month (int, 0-indexed)
-#   [32..36) year (int, absolute)
-# getHour() = floor(timeOfDay); minute = (timeOfDay - floor)*60.
-# Old community offsets ([15]/[31]/[35]) were WRONG — they landed on trailing
-# bytes of targetZombies/month/year and only coincidentally looked right.
-MAP_T_TIMEOFDAY_OFFSET = 20  # float, in-game hour of day (0..24)
-MAP_T_DAY_OFFSET       = 24  # int, 0-indexed
-MAP_T_MONTH_OFFSET     = 28  # int, 0-indexed
-MAP_T_YEAR_OFFSET      = 32  # int, absolute calendar year
+# PZ's fictional calendar zero-point: the game starts in-game on 1993-07-09
+# 09:00 local, and "days survived" counts whole in-game days elapsed since
+# then. Displayed date = zero point + days_survived.
+IN_GAME_EPOCH = datetime.datetime(1993, 7, 9, 9, 0)
+# Byte offsets in <save>/map_t.bin (the world state file PZ rewrites on save).
+# Verified against the live B42 save (2026-08): days_survived [15], the file's
+# own day-of-month [31]+1 and month [35]+1 cross-check to the same calendar
+# date as epoch + days_survived. These offsets are stable across the observed
+# B42 saves but ARE structure-sensitive — if they ever read garbage, readers
+# fail closed (no time field) rather than printing a wrong date.
+MAP_T_DAYS_OFFSET = 15
+MAP_T_DAY_OFFSET = 31
+MAP_T_MONTH_OFFSET = 35
 
 
 def read_in_game_time(map_t_path):
@@ -51,23 +45,19 @@ def read_in_game_time(map_t_path):
         return None, None
     try:
         with open(map_t_path, "rb") as f:
-            d = f.read(36)
-        if len(d) < 36:
+            d = f.read()
+        if len(d) <= max(MAP_T_DAY_OFFSET, MAP_T_MONTH_OFFSET):
             return None, None
-        tod    = struct.unpack_from(">f", d, MAP_T_TIMEOFDAY_OFFSET)[0]
-        day    = struct.unpack_from(">i", d, MAP_T_DAY_OFFSET)[0] + 1
-        month  = struct.unpack_from(">i", d, MAP_T_MONTH_OFFSET)[0] + 1
-        year   = struct.unpack_from(">i", d, MAP_T_YEAR_OFFSET)[0]
-        # sanity ranges; fail closed (no wrong date) if outside
-        if not (0 <= tod < 24 and 1 <= day <= 31 and 1 <= month <= 12 and 1990 <= year <= 2100):
+        days = d[MAP_T_DAYS_OFFSET]
+        # optional cross-check: the file also stores its own day/month; if they
+        # wildly disagree with the derived date, the offset model is wrong.
+        day_f = d[MAP_T_DAY_OFFSET] + 1
+        month_f = d[MAP_T_MONTH_OFFSET] + 1
+        derived = IN_GAME_EPOCH + datetime.timedelta(days=days)
+        # allow 2-day tolerance (save lag + calendar edge); else fail safe
+        if abs((derived.day) - day_f) > 2 or abs(derived.month - month_f) > 1:
             return None, None
-        hour = int(tod)
-        minute = int(round((tod - hour) * 60))
-        if minute == 60:
-            hour += 1
-            minute = 0
-        days = struct.unpack_from(">i", d, 8)[0]
-        return "%04d-%02d-%02d %02d:%02d" % (year, month, day, hour, minute), days
+        return derived.strftime("%Y-%m-%d %H:%M"), days
     except (OSError, ValueError):
         return None, None
 
