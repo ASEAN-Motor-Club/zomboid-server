@@ -452,8 +452,12 @@ def main():
             status["clock"] = st["current_sec"]
             status["clock_str"] = cur.strftime("%Y-%m-%d %H:%M")
             status["stopped"] = (players == 0)
-            # Day N = whole in-game days survived (24h day), calendar rollover
-            delta = int(st["current_sec"] // 86400)
+            # Day N = whole in-game days survived, rolling over at in-game
+            # MIDNIGHT (calendar rollover), counting from the Jul-9 epoch.
+            # Using the calendar date (not floor-div of epoch-relative seconds)
+            # keeps the day aligned with the displayed date; the epoch starts
+            # at 09:00 so a 86400-division counter would tick 9h late.
+            delta = (cur.date() - IN_GAME_EPOCH.date()).days
             status["day_no"] = delta
     else:
         # no seed yet; show offline-map path only
