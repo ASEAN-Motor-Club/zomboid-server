@@ -129,6 +129,12 @@ with lib; let
         # Arcadia (workshop 3773972040) requires these anti-cheat levels.
         AntiCheatSpeed = "4";
         AntiCheatNoClip = "4";
+        # anti-cheat policy enum: 1=Ban 2=Kick 3=Log 4=Disabled. PZ defaults
+        # AntiCheatHit to 2 (Kick), which false-positives on combat-mod users
+        # (desync burst hits + gun 0-ammo both share this handler). Pin to 3
+        # (Log) so the server still records suspected violations but never
+        # kicks/bans over a timing blip.
+        AntiCheatHit = "3";
         # 1=Hidden 2=Friends 3=Friends+nearby 4=Everyone. AMC wants everyone's
         # token visible on the map (community survival server).
         MapRemotePlayerVisibility = "4";
