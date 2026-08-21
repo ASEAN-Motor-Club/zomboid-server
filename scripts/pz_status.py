@@ -61,6 +61,10 @@ IN_GAME_EPOCH = datetime.datetime(1993, 7, 9, 9, 0)
 # (DayLength=4 => 24 in-game hours per 90 real minutes).
 # in-game seconds per real second:
 IN_GAME_X = 24 * 60 * 60 / (90 * 60)  # == 16.0
+# Nominal seconds per in-game hour at 16x is 3600/16 = 225s real. The server's
+# real rate drifts ~15-17x, so force a fresh save every ~10 real minutes to
+# re-anchor the clock before the gap grows too large.
+SAVE_INTERVAL = 10 * 60
 
 # --- map_t.bin offsets (verified by decompiling GameTime.save(); big-endian) --
 MAP_T_VERSION_OFFSET  = 4   # int, == 249
@@ -101,20 +105,16 @@ def read_save_anchor(map_t_path):
         if minute == 60:
             hour += 1
             minute = 0
-        day = day0 + 1  # 0-based -> 1-based day-of-month
+        day = day0 + 1  # 0-based -> 1-based day-of-month. VERIFIED via
+        # GameTime.save()/update(): the raw `day` field is 0-based
+        # (rollover does setDay(getDay()+1), setDay(0) at month end), same as
+        # month (0-based). day0=21 -> calendar day 22.
         month = mon0 + 1  # 0-based -> 1-based
-        # Sanity: derived date from night counter must agree within tolerance.
-        derived = IN_GAME_EPOCH + datetime.timedelta(days=nights)
-        if abs((derived.month - month)) > 1 or abs(derived.day - day) > 2:
-            # Anchor from nights counter directly (more robust day signal).
-            base = IN_GAME_EPOCH + datetime.timedelta(days=nights)
-            anchor = base.replace(hour=hour, minute=minute, second=0)
-        else:
-            try:
-                anchor = datetime.datetime(year, month, day, hour, minute)
-            except ValueError:
-                anchor = IN_GAME_EPOCH + datetime.timedelta(days=nights)
-                anchor = anchor.replace(hour=hour, minute=minute, second=0)
+        # Calendar fields are authoritative and self-validating (datetime raises
+        # ValueError on impossible dates). The night counter is NOT used: it
+        # does NOT equal the calendar date (e.g. nights=44 at calendar Aug 22),
+        # so comparing against it would wrongly reject or shift the anchor.
+        anchor = datetime.datetime(year, month, day, hour, minute)
         return anchor
     except (OSError, ValueError, struct.error):
         return None
@@ -175,13 +175,20 @@ def advance_clock(state, running, now_wall):
     return state
 
 
-def try_reanchor_from_save(state, map_t_path):
-    """If 0 players and map_t.bin got a fresh write since our last anchor,
-    snap the clock to it (at 0 players PauseEmpty freezes the world, so the
-    save IS the authoritative current time). Guards against stale/corrupt data
-    so we never jump backward or to a nonsense value.
+def try_reanchor_from_save(state, map_t_path, max_rewind=2 * 86400):
+    """Snap the clock to a freshly-written map_t.bin.
 
-    Returns the (possibly updated) state.
+    The save is the authoritative in-game time whenever it is freshly written
+    (0-player freeze OR periodic/chunk save while running): PZ writes the real
+    world clock into it. Unlike the old logic (which only re-anchored at 0
+    players and rejected any backward jump), we re-anchor on ANY fresh write so
+    the clock self-corrects drift caused by the running vs. nominal 16x rate.
+
+    Guards: only act on a save NEWER than we've already incorporated, and only
+    snap within a sane window (reject clearly corrupt / unrelated saves). A
+    fresh save may legitimately be ahead (world advanced faster than our 16x
+    nominal) or behind (world ran slower / paused) by up to the accrued gap, so
+    we allow backward corrections up to max_rewind.
     """
     if state is None or not map_t_path or not os.path.exists(map_t_path):
         return state
@@ -197,17 +204,10 @@ def try_reanchor_from_save(state, map_t_path):
     if new_sec is None:
         return state
     cur_sec = state.get("current_sec", 0)
-    # At 0 players the world is FROZEN, so a genuine fresh save can only match
-    # our clock within poll lag (a few in-game minutes). A value substantially
-    # BEHIND means it's a stale snapshot (save predates our last accrue), which
-    # would wrongly rewind the clock. Reject backward jumps beyond a small
-    # buffer (5 in-game minutes).
-    if new_sec < cur_sec - 5 * 60:
+    # Reject a clearly unrelated/corrupt save (e.g. a different world's map_t
+    # landing here): the time must be within a sane window of ours.
+    if abs(new_sec - cur_sec) > max_rewind:
         state["anchor_mtime"] = mtime  # remember it; stop re-checking this file
-        return state
-    # reject wild forward leaps too (corrupt / unrelated save)
-    if new_sec - cur_sec > 6 * 3600:
-        state["anchor_mtime"] = mtime
         return state
     state["current_sec"] = new_sec
     state["anchor_mtime"] = mtime
@@ -437,15 +437,28 @@ def main():
         # was there someone online at the LAST tick? (persisted `running` is
         # the previous state before advance_clock rewrites it below)
         was_running = bool(st.get("running"))
+        # Track when we last forced a save so we can rate-limit periodic
+        # self-correction while the world is running.
+        last_forced = st.get("last_forced_save", 0.0)
         st = advance_clock(st, running, now_wall)
-        # At a 0-player transition (players online last tick -> now 0), the
-        # world just froze. Trigger a mid-flight `save` so map_t.bin is fresh,
-        # then re-anchor to it -- no server restart required. Also
-        # opportunistically re-anchor on any later fresh save at 0 players.
-        if players == 0:
-            if was_running and args.pz_fifo:
-                trigger_fifo_save_and_wait(args.pz_fifo, args.map_t_file, st)
-            st = try_reanchor_from_save(st, args.map_t_file)
+        # --- keep the clock honest ---
+        # The authoritative time lives in map_t.bin, which PZ rewrites on
+        # chunk-save / periodic save / explicit `save`. Our 16x accumulator
+        # drifts from the real rate (measured ~15-17x), so we re-anchor on ANY
+        # fresh write -- not just at 0 players -- and also force a periodic
+        # save while players are online so a fresh anchor always exists to
+        # reel the clock back in.
+        if args.pz_fifo:
+            force_now = (
+                # running -> 0 transition: world froze, save the frozen instant
+                (was_running and not running)
+                # periodic while running: ensure a fresh authoritative anchor
+                or (running and (now_wall - last_forced >= SAVE_INTERVAL))
+            )
+            if force_now:
+                if trigger_fifo_save_and_wait(args.pz_fifo, args.map_t_file, st):
+                    st["last_forced_save"] = now_wall
+        st = try_reanchor_from_save(st, args.map_t_file)
         save_state(clock_state_path, st)
         if status is not None:
             cur = game_sec_to_datetime(st["current_sec"])
