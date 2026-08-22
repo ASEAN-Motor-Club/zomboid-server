@@ -366,6 +366,12 @@ with lib; let
           ElecShut = "3";
           ElecShutModifier = "30";
           MultiHitZombies = "true";
+          # FuelStationGasInfinite: gas station pumps have infinite fuel (default
+          # false = finite, runs dry based on FuelStationGasMin/Max + empty chance).
+          # On this PVE survival server infinite fuel removes the raiding/scavenging
+          # pressure on stations; players can keep vehicles running without
+          # competing over pumps.
+          FuelStationGasInfinite = "true";
         };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
