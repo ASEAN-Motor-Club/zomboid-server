@@ -105,6 +105,12 @@ with lib; let
         # ping-based kick unfairly locks them out.
         PingLimit = "0";
         MaxPlayers = "32";
+        # MaxPacketsPerSecond: cap on network packets the server processes per
+        # client per second (default 300, range 100-1000). SEA players hit
+        # latency bursts; at 300 the server drops their fast input -> desync.
+        # Eased to 600 (matched the live changeoption) for smoother sync under
+        # SEA latency.
+        MaxPacketsPerSecond = "600";
         ServerPlayerCount = "32";
         MaxAccountsPerUser = "5";
         PVP = "false";
