@@ -196,6 +196,15 @@ with lib; let
         # server. The other two are confirmed B42-loadable (42/ folder, correct
         # mod.info id) and are deliberate server-side ADDS.
         "3676347667" "3674013419"
+        # Nick's Turn Off Fridges (3778868211 / NicksTurnOffFridges) — added
+        # 2026-08-26, a deliberate server-side ADD beyond the collection.
+        # Structural B42 gate passed: 42/+common/ folders present, mod.info
+        # id=NicksTurnOffFridges, versionMin=42.0.0. 5★/374 ratings,
+        # author: "safe to add to an existing save", dedicated-server OK.
+        # HARD BLOCKER: operator MUST add 3778868211 to the AMC Zomboid Modpack
+        # collection (3776174669) before the applying restart, or clients
+        # subscribed only to the collection get a mod-mismatch kick on join.
+        "3778868211"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -227,6 +236,9 @@ with lib; let
         # Tanks Have Propane, Jeeve's Claims (CoolerPlus removed 2026-08-19, see
         # workshopItems note).
         "TanksHavePropane42" "JeevesClaims"
+        # Nick's Turn Off Fridges (3778868211) — deliberate server-side ADD,
+        # see the corresponding workshopItems NOTE. "NicksTurnOffFridges".
+        "NicksTurnOffFridges"
       ];
       description = "Internal mod IDs, rendered as the Mods= line (order preserved). MUST keep the auto-restart mod first.";
     };
