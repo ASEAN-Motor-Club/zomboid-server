@@ -149,7 +149,13 @@ with lib; let
         MouseOverToSeeDisplayName = "false";
         # Welcome message shown to every player on join. Uses <RGB:r,g,b> for
         # color and <LINE> for line breaks. No dynamic tokens supported.
-        ServerWelcomeMessage = "<RGB:1,0.85,0>** ASEAN Motor Club ** | Project Zomboid</RGB><LINE><LINE><RGB:0.72,0.86,1.0>--- Welcome, Survivor! ---</RGB><LINE><LINE><RGB:1,0.85,0>Discord: aseanmotorclub.com</RGB><LINE><LINE>> PVE Co-operative<LINE>> Infection: Saliva Only<LINE>> Based on: Apocalypse<LINE>> Spawn: Muldraugh, KY<LINE><LINE>Happy surviving!";
+        # NOTE: prior version used gold <RGB:1,0.85,0> on the header + Discord
+        # lines and both truncated their tail word in-game (Zomboid / the domain
+        # dropped) while a blue <RGB:0.72,0.86,1.0> line and plain lines rendered
+        # fine — so decimal-gold tags are the suspect, not the char cap (1024 >
+        # 326 raw). Using the proven-intact blue color + plain lines + a real
+        # discord.gg shortlink instead of a bare domain.
+        ServerWelcomeMessage = "<RGB:0.72,0.86,1.0>ASEAN Motor Club | Project Zomboid</RGB><LINE><LINE><RGB:0.72,0.86,1.0>--- Welcome, Survivor! ---</RGB><LINE><LINE>Discord: https://discord.gg/qrT2kqnfDH<LINE><LINE>> PVE Co-op<LINE>> Infection: Saliva Only<LINE>> Based on: Apocalypse<LINE>> Spawn: Muldraugh, KY<LINE><LINE>Happy surviving!";
         # ServerWelcomeMessage renders in the chat panel, so PZ caps it at
         # ChatMessageCharacterLimit (default 200). The welcome string is ~326
         # raw chars WITH format tags, hence the truncated tail incl. the Discord
