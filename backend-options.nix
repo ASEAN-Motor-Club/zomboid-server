@@ -147,15 +147,13 @@ with lib; let
         # true = names only show when you mouse over a player; false = always
         # visible. AMC runs names always-on (community survival server).
         MouseOverToSeeDisplayName = "false";
-        # Welcome message shown to every player on join. Uses <RGB:r,g,b> for
-        # color and <LINE> for line breaks. No dynamic tokens supported.
-        # NOTE: prior version used gold <RGB:1,0.85,0> on the header + Discord
-        # lines and both truncated their tail word in-game (Zomboid / the domain
-        # dropped) while a blue <RGB:0.72,0.86,1.0> line and plain lines rendered
-        # fine — so decimal-gold tags are the suspect, not the char cap (1024 >
-        # 326 raw). Using the proven-intact blue color + plain lines + a real
-        # discord.gg shortlink instead of a bare domain.
-        ServerWelcomeMessage = "<RGB:0.72,0.86,1.0>ASEAN Motor Club | Project Zomboid</RGB><LINE><LINE><RGB:0.72,0.86,1.0>--- Welcome, Survivor! ---</RGB><LINE><LINE>Discord: https://discord.gg/qrT2kqnfDH<LINE><LINE>> PVE Co-op<LINE>> Infection: Saliva Only<LINE>> Based on: Apocalypse<LINE>> Spawn: Muldraugh, KY<LINE><LINE>Happy surviving!";
+        # Welcome message shown to every player on join. Uses <LINE> for line breaks.
+        # NOTE: avoid <RGB:r,g,b> color tags entirely — a complex-valued tag
+        # (e.g. <RGB:1,0.85,0>) was observed to drop its tail word in-game
+        # (Project Zomboid -> Project). Plain text only. Also keep it compact:
+        # single <LINE> spacing and no obvious-info lines, so it fits the chat
+        # panel height instead of being clipped.
+        ServerWelcomeMessage = "ASEAN Motor Club | Project Zomboid<LINE>--- Welcome, Survivor! ---<LINE>Discord: https://discord.gg/qrT2kqnfDH<LINE>> PVE Co-op<LINE>> Infection: Saliva Only<LINE>> Spawn: Muldraugh, KY<LINE>Happy surviving!";
         # ServerWelcomeMessage renders in the chat panel, so PZ caps it at
         # ChatMessageCharacterLimit (default 200). The welcome string is ~326
         # raw chars WITH format tags, hence the truncated tail incl. the Discord
