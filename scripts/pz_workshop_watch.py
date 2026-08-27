@@ -40,21 +40,34 @@ import urllib.request
 
 STEAM_API = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
 
+# Discord's edge rejects the bare python-urllib client fingerprint with 403
+# (observed all day on 2026-08-27 while curl POSTs to the same webhook
+# succeeded). Sending an explicit UA avoids that WAF rule.
+WEBHOOK_UA = "AMC-PZ-workshop-watcher/1.0"
+
 
 def log(msg):
     print(f"[workshop-watch] {time.strftime('%Y-%m-%d %H:%M:%S')} {msg}", flush=True)
 
 
-def post_discord(webhook, content):
+def post_discord(webhook_url, content):
     """Fire-and-forget Discord webhook message (errors logged, never fatal)."""
     try:
         data = json.dumps({"content": content}).encode()
         req = urllib.request.Request(
-            webhook, data=data, headers={"Content-Type": "application/json"},
+            webhook_url, data=data,
+            headers={"Content-Type": "application/json",
+                     "User-Agent": WEBHOOK_UA},
             method="POST")
         urllib.request.urlopen(req, timeout=15)
     except Exception as e:  # noqa: BLE001 - notifier must never kill the tick
         log(f"webhook post failed: {e}")
+
+
+def post_all(webhook_urls, content):
+    """Post one message to every configured webhook."""
+    for u in webhook_urls:
+        post_discord(u, content)
 
 
 def fetch_workshop(ids):
@@ -128,7 +141,8 @@ def fifo_write(fifo, command):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--webhook-url", required=True)
+    ap.add_argument("--webhook-url", action="append", required=True,
+                    help="Discord webhook URL; repeatable for fan-out")
     ap.add_argument("--state-file", required=True)
     ap.add_argument("--fifo", default="/run/zomboid-server/server.fifo")
     ap.add_argument("--unit", default="zomboid-server.service")
@@ -159,19 +173,20 @@ def main():
                 f"({state.get('pending_old_pid')} -> {cur_pid})")
             state["pending_restart"] = False
             state["pending_since"] = None
-            post_discord(args.webhook_url,
-                         "✅ PZ workshop-update restart completed; server is "
-                         "back up on the refreshed mods.")
+            state["warned_no_confirm"] = False
+            post_all(args.webhook_url,
+                     "✅ PZ workshop-update restart completed; server is "
+                     "back up on the refreshed mods.")
         elif time.time() - state.get("pending_since", 0) > 1800:
             log("WARN: restart did not confirm within 30 min; clearing guard "
                 "(baseline kept — next legit boot absorbs the mods)")
             state["pending_restart"] = False
             state["pending_since"] = None
-            post_discord(args.webhook_url,
-                         "⚠️ PZ workshop-update restart did not verify within "
-                         "30 min. Updated mods will apply at the next regular "
-                         "restart — no action needed unless you want them live "
-                         "sooner.")
+            post_all(args.webhook_url,
+                     "⚠️ PZ workshop-update restart did not verify within "
+                     "30 min. Updated mods will apply at the next regular "
+                     "restart — no action needed unless you want them live "
+                     "sooner.")
 
     # First run or nothing tracked yet: absorb silently.
     changed = []
@@ -202,7 +217,7 @@ def main():
 
     # Announce + grace period.
     minutes = max(1, args.grace_minutes)
-    post_discord(args.webhook_url,
+    post_all(args.webhook_url,
                  f"🔄 PZ workshop update detected: {names}. Graceful "
                  f"*save-and-restart* in ~{minutes} min to sync everyone "
                  f"(world will be saved first — no progress lost).")
@@ -250,7 +265,10 @@ def main():
     state["pending_old_pid"] = old_pid
     save_state(args.state_file, state)
 
-    # Wait briefly inline so the common case resolves in one tick...
+    # Confirm inline; if it fails to rebound quickly, escalate LOUDLY once per
+    # episode instead of waiting silently for the next tick (seen 2026-08-27:
+    # a wedged main loop accepted 'quit' into its buffer but never executed
+    # it, so PID never changed and nobody was told anything).
     deadline = time.time() + args.restart_confirm_timeout
     while time.time() < deadline:
         time.sleep(15)
@@ -259,13 +277,30 @@ def main():
             log(f"restart confirmed within tick (new MainPID {cur})")
             state["pending_restart"] = False
             state["pending_since"] = None
+            state["warned_no_confirm"] = False
             save_state(args.state_file, state)
-            post_discord(args.webhook_url,
-                         "✅ PZ saved & restarted cleanly with the updated "
-                         "mods. Back online.")
+            post_all(args.webhook_url,
+                     "✅ PZ saved & restarted cleanly with the updated "
+                     "mods. Back online.")
             return
     log(f"MainPID still {old_pid} after {args.restart_confirm_timeout}s — "
         f"leaving pending-restart guard set for the next tick")
+    if not state.get("warned_no_confirm"):
+        state["warned_no_confirm"] = True
+        save_state(args.state_file, state)
+        post_all(args.webhook_url,
+                 "🚨 **PZ did not exit after a 'quit' was accepted** "
+                 "(process still alive after "
+                 f"{args.restart_confirm_timeout}s). The server main loop "
+                 "appears FROZEN — joining will fail until an operator "
+                 "intervenes.\n\n"
+                 "Safest fallback for whoever handles it:\n"
+                 "`systemctl stop zomboid-server` (wait for full stop / it "
+                 "ends via kill-timer if frozen), then `systemctl start "
+                 "zomboid-server`.\n"
+                 "World keeps whatever was last flushed to disk; deltas "
+                 "since then are lost. This notice is sent once per "
+                 "episode.")
 
 
 if __name__ == "__main__":
