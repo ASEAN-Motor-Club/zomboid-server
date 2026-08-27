@@ -336,6 +336,16 @@ with lib; let
             default = null;
             description = "Path to a file containing the Discord webhook URL (an agenix secret). Never committed.";
           };
+          webhookFiles = mkOption {
+            type = types.listOf types.path;
+            default = [];
+            description = ''
+              Additional Discord webhook secret files to fan out every notice
+              (e.g. a second ops channel). Each file contains one webhook URL;
+              merged with `webhookFile`. At least one of the two must be set.
+              Secret values must not contain whitespace.
+            '';
+          };
           interval = mkOption {
             type = types.str;
             default = "*:0/10";

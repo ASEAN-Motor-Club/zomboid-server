@@ -204,8 +204,10 @@ in {
       message = "services.zomboid-server.changelogNotifier.webhookFile must be set when changelogNotifier.enable = true";
     }
     {
-      assertion = !cfg.workshopWatcher.enable || cfg.workshopWatcher.webhookFile != null;
-      message = "services.zomboid-server.workshopWatcher.webhookFile must be set when workshopWatcher.enable = true";
+      assertion = !cfg.workshopWatcher.enable
+        || cfg.workshopWatcher.webhookFile != null
+        || cfg.workshopWatcher.webhookFiles != [];
+      message = "services.zomboid-server.workshopWatcher needs at least one Discord webhook: set webhookFile or webhookFiles";
     }];
 
     networking.firewall = lib.mkIf cfg.openFirewall {
@@ -479,9 +481,16 @@ in {
       path = with pkgs; [ python3 coreutils systemd ];
       script = ''
         set -u
-        WEBHOOK="$(cat "${cfg.workshopWatcher.webhookFile}")"
+        # One --webhook-url flag per configured secret; the script fans out
+        # every notice to all of them. URLs contain no whitespace, so passing
+        # them unquoted here is safe.
+        WEBHOOK_ARGS=""
+        ${optionalString (cfg.workshopWatcher.webhookFile != null) ''
+          WEBHOOK_ARGS="$WEBHOOK_ARGS --webhook-url $(cat ${cfg.workshopWatcher.webhookFile})"
+        ''}
+        ${concatMapStringsSep "\n" (f: ''WEBHOOK_ARGS="$WEBHOOK_ARGS --webhook-url $(cat ${f})"'') cfg.workshopWatcher.webhookFiles}
         exec ${pkgs.python3}/bin/python3 ${./scripts/pz_workshop_watch.py} \
-          --webhook-url "$WEBHOOK" \
+          $WEBHOOK_ARGS \
           --state-file "${dataDir}/zomboid-workshop-watch.json" \
           --fifo "/run/${cfg.stateDirectory}/server.fifo" \
           --unit "zomboid-server.service" \
