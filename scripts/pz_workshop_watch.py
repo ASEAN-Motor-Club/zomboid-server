@@ -233,6 +233,14 @@ def main():
     except Exception as e:
         log(f"FIFO write failed ({e}) — abandoning this bounce, will retry "
             f"next tick. Baseline NOT advanced.")
+        # state["items"] was already refreshed to Steam's current values
+        # earlier this tick; revert the CHANGED ids to their pre-tick
+        # timestamps so a later successful tick still sees them as changed
+        # and retries. Without this, one FIFO failure would silently absorb
+        # the update (mods stay stale until some unrelated restart).
+        for wid, _prev_info in changed:
+            if wid in known:
+                state["items"][wid] = known[wid]
         save_state(args.state_file, state)
         sys.exit(1)
 
