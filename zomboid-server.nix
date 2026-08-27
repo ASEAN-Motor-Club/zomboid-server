@@ -202,6 +202,10 @@ in {
     {
       assertion = !cfg.changelogNotifier.enable || cfg.changelogNotifier.webhookFile != null;
       message = "services.zomboid-server.changelogNotifier.webhookFile must be set when changelogNotifier.enable = true";
+    }
+    {
+      assertion = !cfg.workshopWatcher.enable || cfg.workshopWatcher.webhookFile != null;
+      message = "services.zomboid-server.workshopWatcher.webhookFile must be set when workshopWatcher.enable = true";
     }];
 
     networking.firewall = lib.mkIf cfg.openFirewall {
@@ -453,6 +457,46 @@ in {
         Persistent = true;
         # idle so a slow poll (Steam title lookup) can't overlap itself
         Unit = "zomboid-changelog-notify.service";
+      };
+    };
+
+    # Safe workshop-update watcher (replacement for the removed auto-restart
+    # mod 3659447892). Polls Steam for workshopItems revisions; on change:
+    # Discord + in-game announce -> grace period -> FIFO 'save' -> FIFO 'quit'
+    # (SAVE FIRST — unlike the mod's bare self-quit) -> Restart=always bounce.
+    # Runs regardless of PZ unit state; inactive PZ just absorbs a baseline.
+    # Root user: needs systemctl visibility + state-file ownership like the
+    # other notifier services here.
+    systemd.services.zomboid-workshop-watch = lib.mkIf cfg.workshopWatcher.enable {
+      description = "Watch workshop revisions and restart PZ via save-first fifo path";
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        # grace period sleeps inside the run; never let two ticks overlap
+        TimeoutStartSec = "1h";
+      };
+      path = with pkgs; [ python3 coreutils systemd ];
+      script = ''
+        set -u
+        WEBHOOK="$(cat "${cfg.workshopWatcher.webhookFile}")"
+        exec ${pkgs.python3}/bin/python3 ${./scripts/pz_workshop_watch.py} \
+          --webhook-url "$WEBHOOK" \
+          --state-file "${dataDir}/zomboid-workshop-watch.json" \
+          --fifo "/run/${cfg.stateDirectory}/server.fifo" \
+          --unit "zomboid-server.service" \
+          --grace-minutes ${toString cfg.workshopWatcher.gracePeriodMinutes} \
+          --items "${concatStringsSep ";" cfg.workshopItems}"
+      '';
+    };
+
+    systemd.timers.zomboid-workshop-watch = lib.mkIf cfg.workshopWatcher.enable {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = cfg.workshopWatcher.interval;
+        Persistent = true;
+        # the tick may legitimately sleep out its own grace period
+        Unit = "zomboid-workshop-watch.service";
       };
     };
   };
