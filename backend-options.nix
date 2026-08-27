@@ -159,6 +159,20 @@ with lib; let
         # raw chars WITH format tags, hence the truncated tail incl. the Discord
         # link. Raise to the max (1024) so the full message + link always fit.
         ChatMessageCharacterLimit = "1024";
+        # PZ startup-backup rotation depth. With BackupsOnStart=true the server
+        # archives the full world into Zomboid/backups/startup/ on EVERY boot
+        # and rotates this many zips deep (~4 GB each). The default 5 was
+        # destroyed during the Aug 26-27 restart storm: every unwanted bounce
+        # consumed one rotation slot, and by the time livestock loss was
+        # reported ALL pre-incident snapshots had been rotated away.
+        # Disk-budget note: each zip is ~4 GB; at this save's size 6 slots
+        # ≈ 24 GB steady-state on a ~35 GB-free root filesystem — do NOT raise
+        # further without pruning old evidence copies or growing disk first.
+        BackupsCount = "6";
+        # Pin what we rely on explicitly so a reseed can't silently disable
+        # the safety net (these are PZ defaults today):
+        BackupsOnStart = "true";
+        BackupsOnVersionChange = "true";
       };
       description = ''
         Declarative `key=value` overrides for the PZ <servername>.ini — the
@@ -170,11 +184,19 @@ with lib; let
     workshopItems = mkOption {
       type = types.listOf types.str;
       default = [
-        # FIRST: Server Workshop Mod Update Checker & Auto-Restart (3659447892).
-        # Author requires it first in load order. A deliberate ADD beyond the
-        # collection: it polls Steam and self-restarts when a workshop item
-        # updates, killing mid-day "some mods updated" lockouts.
-        "3659447892"
+        # NOTE: "Server Workshop Mod Update Checker & Auto-Restart"
+        # (3659447892 / ServerWorkshopModAutoRestartB42) was REMOVED 2026-08-27.
+        # Its self-initiated quit path calls getCore():quit() from Lua WITHOUT
+        # saving the world first (the broadcast "SAVING PLAYERS..." message is
+        # cosmetic), and because the JVM exits by itself, systemd's ExecStop
+        # fifo-save safety net never runs. Every such bounce silently rolled
+        # back everything since the last explicit save while player inventories
+        # persisted — undoing kills/butchery/construction (livestock loss +
+        # resurrected-butchered-animal duplicates reported Aug 26-27).
+        # Replacement: services.zomboid-server.workshopWatcher below, which
+        # detects updates host-side and restarts via the save-first FIFO path.
+        # Collection followup: the operator may also drop 3659447892 from
+        # collection 3776174669 (harmless to leave; server no longer loads it).
         # --- AMC Zomboid Modpack (Steam collection 3776174669, 64 items) ---
         # NOTE: Item Condition Overlay (3641048285 / ItemCondition_KingEJ) removed
         # deliberately on 2026-08-16 — visual conflicts with another mod. Collection
@@ -215,7 +237,8 @@ with lib; let
     mods = mkOption {
       type = types.listOf types.str;
       default = [
-        "ServerWorkshopModAutoRestartB42"
+        # ("ServerWorkshopModAutoRestartB42" removed 2026-08-27 — see the
+        # workshopItems note above for why.)
         # --- AMC Zomboid Modpack (Steam collection 3776174669) ---
         "SwapIt" "VehicleRepairOverhaul" "fhqMotoriousZone" "ProximityInventory"
         "errorMagnifier" "RainCleansBlood" "ChuckleberryFinnAlertSystem" "DEON_CVG"
@@ -244,7 +267,7 @@ with lib; let
         # see the corresponding workshopItems NOTE. "NicksTurnOffFridges".
         "NicksTurnOffFridges"
       ];
-      description = "Internal mod IDs, rendered as the Mods= line (order preserved). MUST keep the auto-restart mod first.";
+      description = "Internal mod IDs, rendered as the Mods= line (order preserved).";
     };
     discord = mkOption {
       type = types.submodule {
@@ -282,7 +305,12 @@ with lib; let
     # want to pin on every boot (same model as `settings` for the .ini): a small
     # block-scoped Lua rewrite, keyed by the mod block (e.g. the auto-restart
     # mod's WorkshopModServerUpdate) then by the option key.
-    # --- Workshop-update Discord notifier ---
+    # --- Workshop-update Discord notifier (LEGACY) ---
+    # NOTE 2026-08-27: this mirrored the auto-restart mod's "Update found for:"
+    # journal lines. The mod is removed (see workshopItems note), so this
+    # channel stays silent; the workshopWatcher below posts its own richer
+    # announcements. Kept (unwired by default) so existing consumer configs
+    # keep evaluating during the module→consumer PR stack.
     # The auto-restart mod (ServerWorkshopModAutoRestartB42) prints the exact
     # updated mod to the server journal (`[WorkshopModServerUpdate] Update found
     # for: <title>`), but only to the console — players never see it. This option
@@ -293,6 +321,43 @@ with lib; let
     #
     # The in-game countdown timer is left exactly as the mod ships it. This only
     # mirrors the already-logged detection line to Discord.
+    # --- Host-side safe workshop-update watcher ---
+    # Replaces the removed auto-restart mod (3659447892): polls Steam for
+    # workshopItems revisions; on change announces (webhook + in-game
+    # servermsg), waits a grace period, then saves via the console FIFO and
+    # only then quits, so Restart=always bounces onto the updated mods with
+    # ZERO world rollback. Host-only — no game code, no mod.
+    workshopWatcher = mkOption {
+      type = types.submodule {
+        options = {
+          enable = mkEnableOption "safe save-first workshop update watcher";
+          webhookFile = mkOption {
+            type = types.nullOr types.path;
+            default = null;
+            description = "Path to a file containing the Discord webhook URL (an agenix secret). Never committed.";
+          };
+          interval = mkOption {
+            type = types.str;
+            default = "*:0/10";
+            description = "systemd .timer OnCalendar schedule for polling Steam revisions.";
+          };
+          gracePeriodMinutes = mkOption {
+            type = types.int;
+            default = 5;
+            description = "Announce-to-restart delay so players can reach safety before the save-and-quit.";
+          };
+        };
+      };
+      default = {};
+      description = ''
+        Poll Steam GetPublishedFileDetails for every configured workshopItem;
+        when an author pushes a new revision, announce it, wait out the grace
+        period, then restart PZ through the SAVE-FIRST fifo path. This is the
+        deliberate, rollback-free replacement for ServerModWorkshopAutoRestartB42
+        (removed 2026-08-27 after its no-save self-quits caused livestock loss
+        and resurrected-butchered-animal duplicates).
+      '';
+    };
     updateNotifier = mkOption {
       type = types.submodule {
         options = {
@@ -359,13 +424,10 @@ with lib; let
     sandboxVars = mkOption {
       type = types.attrsOf (types.attrsOf types.str);
       default = {
-        # Server Workshop Mod Update Checker & Auto-Restart (3659447892): after
-        # it detects a workshop update it shuts the server down for re-sync. This
-        # is the countdown delay from detection to shutdown. Default is 1 minute;
-        # 5 gives players breathing room to log out before the bounce.
-        WorkshopModServerUpdate = {
-          RestartDelayMinutes = "5";
-        };
+        # NOTE: the WorkshopModServerUpdate.RestartDelayMinutes override was
+        # removed 2026-08-27 together with the auto-restart mod itself
+        # (3659447892 / ServerWorkshopModAutoRestartB42). The replacement
+        # grace delay is configured host-side via workshopWatcher.gracePeriod.
         # ZombieLore: virus transmission mode. Community PVE server —
         # Saliva Only (2) means only zombie bites can infect, not scratches
         # or lacerations. (1=Blood+Saliva, 2=Saliva Only, 3=Everyone,
