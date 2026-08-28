@@ -466,6 +466,20 @@ with lib; let
           # pressure on stations; players can keep vehicles running without
           # competing over pumps.
           FuelStationGasInfinite = "true";
+          # Farming pacing for MP (2026-08-28): B42 crop cycles run 30-240
+          # in-game days with per-stage tending, and with DayLength=4 the world
+          # keeps running (~16x) while players are offline — vanilla pacing is
+          # effectively unplayable on a dedicated server (Indie Stone forum +
+          # community consensus). PlantGrowingSeasons=false removes sow-month
+          # curses and winter kill (the Outbreak preset pairs no-seasons with
+          # 1.5x growth); FarmingSpeedNew=3.0 matches the legacy "Very Fast"
+          # band — cabbage ~1.3 real days, corn/potato ~1.9 real days on our
+          # clock. Community upper bound is 4x.
+          # Both are TOP-LEVEL keys in the SandboxVars = { ... } Lua block
+          # (verified in the live amc_SandboxVars.lua, PlantGrowingSeasons and
+          # FarmingSpeedNew lines). Boot-only: applies at next restart.
+          PlantGrowingSeasons = "false";
+          FarmingSpeedNew = "3.0";
         };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
