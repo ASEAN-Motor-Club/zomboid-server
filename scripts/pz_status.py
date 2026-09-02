@@ -175,7 +175,7 @@ def advance_clock(state, running, now_wall):
     return state
 
 
-def try_reanchor_from_save(state, map_t_path, max_rewind=2 * 86400):
+def try_reanchor_from_save(state, map_t_path, max_rewind=21 * 86400):
     """Snap the clock to a freshly-written map_t.bin.
 
     The save is the authoritative in-game time whenever it is freshly written
@@ -189,6 +189,17 @@ def try_reanchor_from_save(state, map_t_path, max_rewind=2 * 86400):
     fresh save may legitimately be ahead (world advanced faster than our 16x
     nominal) or behind (world ran slower / paused) by up to the accrued gap, so
     we allow backward corrections up to max_rewind.
+
+    Window sizing matters (hit 2026-09-03): the real clock rate measures
+    ~14.4x under load (nominal 16x), so the accumulator gains ~1.5 in-game
+    days per real day while players are online. Once that lead passed the old
+    2-day window, EVERY forced-save re-anchor was silently rejected and the
+    displayed clock ran ahead of the world forever. The window must exceed
+    plausible cumulative drift, yet stay well below the epoch-reset
+    signature: an ENOSPC-zeroed map_t re-initializes to 1993-07-09 09:00
+    (~0 in-game sec), i.e. ~150+ days behind a progressed world, which still
+    trips a 21-day window. Rejections and snaps are logged to stdout
+    (journald) so a stuck guard can't go silent again.
     """
     if state is None or not map_t_path or not os.path.exists(map_t_path):
         return state
@@ -206,9 +217,17 @@ def try_reanchor_from_save(state, map_t_path, max_rewind=2 * 86400):
     cur_sec = state.get("current_sec", 0)
     # Reject a clearly unrelated/corrupt save (e.g. a different world's map_t
     # landing here): the time must be within a sane window of ours.
+    gap_days = (new_sec - cur_sec) / 86400
     if abs(new_sec - cur_sec) > max_rewind:
+        print(f"[pz_status] map_t anchor REJECTED: gap {gap_days:+.2f}d exceeds "
+              f"{max_rewind / 86400:.0f}d sanity window (clock="
+              f"{game_sec_to_datetime(cur_sec):%Y-%m-%d %H:%M} save="
+              f"{game_sec_to_datetime(new_sec):%Y-%m-%d %H:%M})", flush=True)
         state["anchor_mtime"] = mtime  # remember it; stop re-checking this file
         return state
+    if abs(new_sec - cur_sec) >= 60:
+        print(f"[pz_status] re-anchored clock to fresh map_t: gap {gap_days:+.2f}d "
+              f"-> {game_sec_to_datetime(new_sec):%Y-%m-%d %H:%M}", flush=True)
     state["current_sec"] = new_sec
     state["anchor_mtime"] = mtime
     return state
