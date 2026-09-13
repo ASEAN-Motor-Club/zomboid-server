@@ -291,6 +291,43 @@ with lib; let
         # owned tiles into the save, so removal needs its Cleanup/Uninstall Mode
         # plus a visit to affected areas.
         "3782929173"
+        # --- Utility / UI pack (2026-09-13) ---
+        # Auto All — WID 3777237134, id `AutoAll`. NOTE: the operator linked the
+        # item 3781941980 ("Auto All Official (Stable Beta)", id AutoAllBETA),
+        # but that item's own description says: "to avoid problems, especially on
+        # hosted servers, use our final version" (3777237134) and "do not run both
+        # at once". The final version is newer (2026-09-11 vs 2026-08-21), better
+        # rated (5★/482 vs 4★/199), carries explicit 42.20.4 mentions, and adds
+        # Open/Water/Exercise modules. It chains its hooks (saves the vanilla
+        # function before wrapping), so it does NOT overwrite Auto Mechanics.
+        "3777237134"
+        # Better Flashlights (3420478458 / BetterFlashlightsFixed) — rebuilt
+        # vanilla lighting kit; versionMin=42.20, updated 2026-09-13.
+        "3420478458"
+        # Animals don't attack buildings (3635189378 / SEG_Animalsdonotthump) —
+        # stops farm animals damaging their enclosures; author states it is
+        # compatible with all other mods.
+        "3635189378"
+        # Pack Mule (3540903327 / B42PackMule) — equipment-slot overhaul.
+        # IMPORTANT: most features are OFF by default and have to be enabled in
+        # the sandbox settings; nothing is pinned here yet, so the mod is inert
+        # until the features are chosen.
+        "3540903327"
+        # Immersive Suicide (3426448380 / stanks_suicide) — context-menu self
+        # death via firearm. Author states it "can be safely added or removed
+        # mid-save". Community policy decision for a PVE server.
+        "3426448380"
+        # Invisible Patches (3386522939 / InvisiblePatches) — invisible clothing
+        # repairs. Page carries explicit 42.20.4 reports. The author requires it
+        # at the BOTTOM of the mod order so it overrides patch textures; it is
+        # therefore appended LAST in the mods list below.
+        "3386522939"
+        # Modern Status (3451167732 / ModernStatus) — status HUD. Requires NeatUI
+        # Framework (3508537032, already in the pack) and must load AFTER it:
+        # satisfied by appending it late. Compatible B42.12.3-B42.20.x, adds no
+        # items/recipes/world data and is safe to toggle on an existing save.
+        # Our copy is v2.4.20, which carries the double-click quick-action fix.
+        "3451167732"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -320,6 +357,13 @@ with lib; let
         "LivestockPanelPlus"
         "CyesPushDoors"
         "ProjectDirtroad"
+        # --- Utility / UI pack (2026-09-13) ---
+        "AutoAll"
+        "BetterFlashlightsFixed"
+        "SEG_Animalsdonotthump"
+        "B42PackMule"
+        "stanks_suicide"
+        "ModernStatus"
         # --- AMC Zomboid Modpack (Steam collection 3776174669) ---
         "SwapIt" "VehicleRepairOverhaul" "fhqMotoriousZone" "ProximityInventory"
         "errorMagnifier" "RainCleansBlood" "ChuckleberryFinnAlertSystem" "DEON_CVG"
@@ -353,6 +397,11 @@ with lib; let
         # also assign zombie outfits get resolved by load order; the pack has no
         # other outfit mod.
         "PZTheMutants"
+        # Invisible Patches — appended absolutely LAST: its author requires the
+        # mod at the BOTTOM of the mod order so its patch textures win over any
+        # other mod that touches them. This keeps the MoodleFramework-before-
+        # PZTheMutants rule intact, since both of those are earlier in the list.
+        "InvisiblePatches"
       ];
       description = "Internal mod IDs, rendered as the Mods= line (order preserved).";
     };
