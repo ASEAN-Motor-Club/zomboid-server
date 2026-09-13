@@ -233,6 +233,15 @@ with lib; let
         # collection (3776174669) before the applying restart, or clients
         # subscribed only to the collection get a mod-mismatch kick on join.
         "3778868211"
+        # The Mutants (3796669056 / PZTheMutants) — added 2026-09-13 for the
+        # fresh-wipe pack. Adds 6 special-zombie variants (Puker, Husk, Skitter,
+        # Wrecker, Leaper, Weeper) with their own models/animations/sounds;
+        # ~4.6 MB client download. B42 verified by download: the item ships
+        # mods/PZTheMutants/{42,common}/, mod.info id=PZTheMutants, and declares
+        # no `require=` (MoodleFramework is only recommended for the Puked
+        # moodle — already in the pack). Per-mutant spawn rates are pinned in
+        # sandboxVars below (1.0% each; mod default 0.4%).
+        "3796669056"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -268,6 +277,12 @@ with lib; let
         # Nick's Turn Off Fridges (3778868211) — deliberate server-side ADD,
         # see the corresponding workshopItems NOTE. "NicksTurnOffFridges".
         "NicksTurnOffFridges"
+        # The Mutants (3796669056) — appended LAST on purpose: it assigns custom
+        # zombie Outfit IDs, and the author's load-order rule is that
+        # MoodleFramework (listed earlier above) must load BEFORE it. Mods that
+        # also assign zombie outfits get resolved by load order; the pack has no
+        # other outfit mod.
+        "PZTheMutants"
       ];
       description = "Internal mod IDs, rendered as the Mods= line (order preserved).";
     };
@@ -482,6 +497,25 @@ with lib; let
           # FarmingSpeedNew lines). Boot-only: applies at next restart.
           PlantGrowingSeasons = "false";
           FarmingSpeedNew = "3.0";
+        };
+        # The Mutants (3796669056 / PZTheMutants): each key is the share of
+        # zombie spawns replaced by that mutant variant, range 0.0-100.0 (0
+        # disables the variant outright). Mod default is 0.4 per mutant (~2.4%
+        # aggregate); pinned to 1.0 each (~6% aggregate) at the operator's
+        # request for the fresh-wipe start. Two of them bypass ZombieLore.Speed
+        # by design: Skitter always spawns as a crawler, Leaper and Weeper always
+        # as sprinters.
+        # NOTE: this block does not exist in amc_SandboxVars.lua until PZ has
+        # loaded the mod once — reconcileLua only asserts keys inside blocks it
+        # can already find, so the first boot after adding the mod keeps the mod
+        # defaults and these values apply from the following boot.
+        PZTheMutants = {
+          PukerSpawnPercentage = "1.0";
+          HuskSpawnPercentage = "1.0";
+          SkitterSpawnPercentage = "1.0";
+          WreckerSpawnPercentage = "1.0";
+          LeaperSpawnPercentage = "1.0";
+          WeeperSpawnPercentage = "1.0";
         };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
