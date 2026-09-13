@@ -214,9 +214,12 @@ with lib; let
         "3635591071" "3648051123" "3671176591" "3680577450"
         "3690780070" "3716522633" "3723726293" "3725497089" "3734639991"
         "3739256725" "3744455714" "3747396551" "3749026793" "3755993986"
-        "3763470184" "3625933422" "3780965224" "3387539308" "3718216106"
+        "3763470184" "3625933422" "3780965224" "3718216106"
         "3386644536" "3566088272" "3281755175" "3385623534" "3470852353"
         "3776262249" "3773972040" "3683878228" "3664207077" "3774826484"
+        # NOTE: Auto Mechanics (3387539308 / AutoMechanics) was REMOVED
+        # 2026-09-13 — superseded by Auto All (3777237134), which includes its
+        # own vehicle-mechanics automation. See the `mods` note below.
         # --- Deliberate server-side ADDS beyond the collection (2026-08-18) ---
         # Tanks Have Propane (3676347667), Jeeve's Claims (3674013419).
         # NOTE: CoolerPlus (3688375772 / CoolerPlus) was added with these on
@@ -233,6 +236,101 @@ with lib; let
         # collection (3776174669) before the applying restart, or clients
         # subscribed only to the collection get a mod-mismatch kick on join.
         "3778868211"
+        # The Mutants (3796669056 / PZTheMutants) — added 2026-09-13 for the
+        # fresh-wipe pack. Adds 6 special-zombie variants (Puker, Husk, Skitter,
+        # Wrecker, Leaper, Weeper) with their own models/animations/sounds;
+        # ~4.6 MB client download. B42 verified by download: the item ships
+        # mods/PZTheMutants/{42,common}/, mod.info id=PZTheMutants, and declares
+        # no `require=` (MoodleFramework is only recommended for the Puked
+        # moodle — already in the pack). Per-mutant spawn rates are pinned in
+        # sandboxVars below (1.0% each; mod default 0.4%).
+        "3796669056"
+        # [B42.20+/MP] Bicycle! (3461415167 / BicycleMod) — added 2026-09-13 for
+        # the fresh-wipe pack. Ships version branches 42.20/42.13/42.12, so our
+        # 42.20.4 build loads the 42.20 set; no `require=`; ~50 MB client
+        # download. Sandbox block `Bicycle` (spawn rates, speed multipliers,
+        # zombie slowdown) is left at the mod's defaults.
+        "3461415167"
+        # --- KI5 vehicle pack (added 2026-09-13 for the fresh-wipe pack) ---
+        # that DAMN Library (3171167894 / damnlib) — the framework all KI5
+        # vehicle mods require; 42.20 branch is versionMin=42.20.0. Three of the
+        # runtime mods below declare `require=\damnlib`, so it must be present.
+        "3171167894"
+        # KI5 '78 AM General M35 Series Trucks (2799152995) — ships each vehicle
+        # as its own mod id. The tanker add-on below requires the M35A2 base plus
+        # the M49A2C (fuel) and M50A3 (water) tanker bodies, so all three ids are
+        # activated; the M62 wrecker and M35A2extra variants are deliberately NOT.
+        # Only 42.0/ branches ship for these sub-mods (versionMin=42.0.0), which
+        # load fine on 42.20.4.
+        "2799152995"
+        # AM General Tanker Functionality (3790021065) — require= the three
+        # 78amgeneral* ids above. Adds 850 L fuel/water cargo tanks plus hose,
+        # pump, hydrant and world-container transfer workflows; also raises the
+        # M967 trailer tank to 2000 L (the trailer ships with the Oshkosh item).
+        "3790021065"
+        # '82 Oshkosh M911 + Military Semi-Trailers (2618213077) — require=\damnlib.
+        # Ships 42.20/ + 42.13/ branches; 42.20/ is versionMin=42.20.0.
+        "2618213077"
+        # Todds mods: Multi purpose item rack (3780806520) — standalone, no
+        # requires, 42.20/ branch with versionMin=42.20 (page carries explicit
+        # 42.20.4 reports).
+        "3780806520"
+        # --- QoL / flavour pack (2026-09-13) ---
+        # It is of interest to me! (3796373365 / ItIsOfInterestToMe) — makes
+        # notes, letters, mail and ID cards readable. Client-only, ships NO
+        # scripts dir (so it cannot define item types) and stores its text in
+        # item ModData — verified safe to remove mid-save: items revert to
+        # vanilla behaviour and re-adding restores it.
+        "3796373365"
+        # Livestock Panel Plus (3783623999 / LivestockPanelPlus) — herd status
+        # table in the zone check panel; re-uses vanilla animal timed actions.
+        "3783623999"
+        # Cye's Push Doors! (3780683663 / CyesPushDoors) — door impacts, zombie
+        # pressure blocking, own timed actions + animsets (CPD_*; no path
+        # collisions with Bicycle/damnlib animsets, checked 2026-09-13).
+        "3780683663"
+        # Project Dirtroad (3782929173 / ProjectDirtroad) — traffic wears
+        # persistent dirt paths; vanilla sprites only, no custom assets. Writes
+        # owned tiles into the save, so removal needs its Cleanup/Uninstall Mode
+        # plus a visit to affected areas.
+        "3782929173"
+        # --- Utility / UI pack (2026-09-13) ---
+        # Auto All — WID 3777237134, id `AutoAll`. NOTE: the operator linked the
+        # item 3781941980 ("Auto All Official (Stable Beta)", id AutoAllBETA),
+        # but that item's own description says: "to avoid problems, especially on
+        # hosted servers, use our final version" (3777237134) and "do not run both
+        # at once". The final version is newer (2026-09-11 vs 2026-08-21), better
+        # rated (5★/482 vs 4★/199), carries explicit 42.20.4 mentions, and adds
+        # Open/Water/Exercise modules. It chains its hooks (saves the vanilla
+        # function before wrapping), so it does NOT overwrite Auto Mechanics.
+        "3777237134"
+        # Better Flashlights (3420478458 / BetterFlashlightsFixed) — rebuilt
+        # vanilla lighting kit; versionMin=42.20, updated 2026-09-13.
+        "3420478458"
+        # Animals don't attack buildings (3635189378 / SEG_Animalsdonotthump) —
+        # stops farm animals damaging their enclosures; author states it is
+        # compatible with all other mods.
+        "3635189378"
+        # Pack Mule (3540903327 / B42PackMule) — equipment-slot overhaul.
+        # IMPORTANT: most features are OFF by default and have to be enabled in
+        # the sandbox settings; nothing is pinned here yet, so the mod is inert
+        # until the features are chosen.
+        "3540903327"
+        # Immersive Suicide (3426448380 / stanks_suicide) — context-menu self
+        # death via firearm. Author states it "can be safely added or removed
+        # mid-save". Community policy decision for a PVE server.
+        "3426448380"
+        # Invisible Patches (3386522939 / InvisiblePatches) — invisible clothing
+        # repairs. Page carries explicit 42.20.4 reports. The author requires it
+        # at the BOTTOM of the mod order so it overrides patch textures; it is
+        # therefore appended LAST in the mods list below.
+        "3386522939"
+        # Modern Status (3451167732 / ModernStatus) — status HUD. Requires NeatUI
+        # Framework (3508537032, already in the pack) and must load AFTER it:
+        # satisfied by appending it late. Compatible B42.12.3-B42.20.x, adds no
+        # items/recipes/world data and is safe to toggle on an existing save.
+        # Our copy is v2.4.20, which carries the double-click quick-action fix.
+        "3451167732"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -241,6 +339,34 @@ with lib; let
       default = [
         # ("ServerWorkshopModAutoRestartB42" removed 2026-08-27 — see the
         # workshopItems note above for why.)
+        # [B42.20+/MP] Bicycle! (3461415167) — FIRST in the load order on the
+        # author's explicit instruction ("Most issues should be resolved by
+        # placing the Bicycle at the TOP of the mod list"), after reports of
+        # bicycles becoming unrideable / stuck in the pick-up animation when
+        # another mod's overrides win. Move this line only if the bike
+        # animations break again.
+        "BicycleMod"
+        # --- KI5 vehicle pack: the library loads FIRST of this group, then the
+        # vehicles that require it. Load order is also resolved by the mods'
+        # own `require=` entries; this list keeps it explicit.
+        "damnlib"
+        "78amgeneralM35A2" "78amgeneralM49A2C" "78amgeneralM50A3"
+        "82oshkoshM911"
+        "AMGeneralTankerFunctionality"
+        # Todd's Multi purpose item rack — standalone.
+        "MultiPurposeItemRack"
+        # --- QoL / flavour pack — all standalone, no requires ---
+        "ItIsOfInterestToMe"
+        "LivestockPanelPlus"
+        "CyesPushDoors"
+        "ProjectDirtroad"
+        # --- Utility / UI pack (2026-09-13) ---
+        "AutoAll"
+        "BetterFlashlightsFixed"
+        "SEG_Animalsdonotthump"
+        "B42PackMule"
+        "stanks_suicide"
+        "ModernStatus"
         # --- AMC Zomboid Modpack (Steam collection 3776174669) ---
         "SwapIt" "VehicleRepairOverhaul" "fhqMotoriousZone" "ProximityInventory"
         "errorMagnifier" "RainCleansBlood" "ChuckleberryFinnAlertSystem" "DEON_CVG"
@@ -256,7 +382,15 @@ with lib; let
         "dustinguished_bolt_cutters" "SolarFloodlight" "RealisticCookingTimes"
         "VHSSkillNameInTooltip" "Neat_Rocco" "ComputerModkum" "SeedSeasonIndicator"
         "NewMusic" "PagerMod" "FoodDrying" "CVI" "GasPumpIndicator"
-        "PropaneExchangeCabinet" "FixedLightOnBeltAF" "AMCMusic" "AutoMechanics"
+        "PropaneExchangeCabinet" "FixedLightOnBeltAF" "AMCMusic"
+        # NOTE: AutoMechanics (3387539308) was REMOVED 2026-09-13 — Auto All
+        # (3777237134) covers vehicle mechanics automation itself via its own
+        # `enableMechanics` module, so the two produced duplicate mechanics-window
+        # entries. Operator decision, not a technical clash (both mods chain
+        # their hooks; neither overwrites the other). Removal is safe: Auto
+        # Mechanics is pure automation wrapping vanilla functions, defines no
+        # item types, and leaves behind only an orphaned `AutoMechanics` sandbox
+        # block in the existing save.
         "Battery Drain Multiplier" "saullevelup" "Mad_EasySetAlarm"
         "VanillaVehiclesAnimated" "RechargeableBatteries" "ImprovedFarmingInfoWindow"
         "PingItemsFriends" "ArcadiaRVInterior_B42_MP" "ArcadiaRVInterior_B42_Vanilla"
@@ -268,6 +402,17 @@ with lib; let
         # Nick's Turn Off Fridges (3778868211) — deliberate server-side ADD,
         # see the corresponding workshopItems NOTE. "NicksTurnOffFridges".
         "NicksTurnOffFridges"
+        # The Mutants (3796669056) — appended LAST on purpose: it assigns custom
+        # zombie Outfit IDs, and the author's load-order rule is that
+        # MoodleFramework (listed earlier above) must load BEFORE it. Mods that
+        # also assign zombie outfits get resolved by load order; the pack has no
+        # other outfit mod.
+        "PZTheMutants"
+        # Invisible Patches — appended absolutely LAST: its author requires the
+        # mod at the BOTTOM of the mod order so its patch textures win over any
+        # other mod that touches them. This keeps the MoodleFramework-before-
+        # PZTheMutants rule intact, since both of those are earlier in the list.
+        "InvisiblePatches"
       ];
       description = "Internal mod IDs, rendered as the Mods= line (order preserved).";
     };
@@ -447,6 +592,19 @@ with lib; let
         ZombieLore = {
           Transmission = "2";
         };
+        # ZombieConfig: population density knobs for the new playthrough
+        # (2026-09-13). NOTE these are NOT top-level keys — PZ nests them in
+        # the ZombieConfig block of the SandboxVars Lua table, so they must be
+        # pinned under this block name or the reconcile writes them where the
+        # game never reads them. PopulationMultiplier 0.75 = above the 0.65
+        # "Normal" preset (the docs note setting it here overrides the
+        # "Zombie Count" preset option). Start 1.0 / Peak 1.5 match the
+        # presets but are pinned explicitly so a reseed can't drift them.
+        ZombieConfig = {
+          PopulationMultiplier = "0.75";
+          PopulationStartMultiplier = "1.0";
+          PopulationPeakMultiplier = "1.5";
+        };
         # Tanks Have Propane (3676347667): allow gas station pumps as a propane
         # refill source (default false = only Fossoil/Gas2Go storage tanks count).
         TanksHavePropane = {
@@ -482,6 +640,61 @@ with lib; let
           # FarmingSpeedNew lines). Boot-only: applies at next restart.
           PlantGrowingSeasons = "false";
           FarmingSpeedNew = "3.0";
+          # --- Loot respawn / reading / event tuning (new playthrough, 2026-09-13) ---
+          # Loot respawn: containers are only eligible once looted at least once,
+          # and respawn is NOT blocked by visibility or later looting. 504
+          # in-game hours (~21 in-game days) is the cadence we want; 0 = disabled.
+          # SeenHoursPreventLootRespawn = 0 keeps "recently visited" from
+          # suppressing respawn entirely (0 = no suppression window).
+          HoursForLootRespawn = "504";
+          SeenHoursPreventLootRespawn = "0";
+          # MaximumLooted = the chance (%, range 0-200) that any building is
+          # ALREADY looted when first found -- 0 = no building is ever
+          # pre-looted, i.e. full loot everywhere. It is NOT a loot-respawn cap
+          # (an easy misread; corrected against the live file's own comment).
+          # MaximumDiminishedLoot = the max % of loot that stops spawning once
+          # DaysUntilMaximumDiminishedLoot (3650, deliberately left at default)
+          # is reached -- so 10 (was 20) means MORE loot long-term, not less.
+          # The actual respawn cap is MaxItemsForLootRespawn (default 5:
+          # containers holding >= this many items don't respawn) -- operator
+          # decision 2026-09-13: leave it at the default, unlimited-respawn
+          # intent does not require changing it.
+          MaximumLooted = "0";
+          MaximumDiminishedLoot = "10";
+          # Helicopter = how often a helicopter passes over the Event Zone:
+          # 1 never .. 4 very often. 3 = often (was 2).
+          Helicopter = "3";
+          # MinutesPerPage = real minutes spent reading one page of literature
+          # (default 2.0). 0.25 makes skill books fast to read.
+          MinutesPerPage = "0.25";
+        };
+        # The Mutants (3796669056 / PZTheMutants): each key is the share of
+        # zombie spawns replaced by that mutant variant, range 0.0-100.0 (0
+        # disables the variant outright). Mod default is 0.4 per mutant (~2.4%
+        # aggregate); pinned to 1.0 each (~6% aggregate) at the operator's
+        # request for the fresh-wipe start. Two of them bypass ZombieLore.Speed
+        # by design: Skitter always spawns as a crawler, Leaper and Weeper always
+        # as sprinters.
+        # NOTE: this block does not exist in amc_SandboxVars.lua until PZ has
+        # loaded the mod once — reconcileLua only asserts keys inside blocks it
+        # can already find, so the first boot after adding the mod keeps the mod
+        # defaults and these values apply from the following boot.
+        PZTheMutants = {
+          PukerSpawnPercentage = "1.0";
+          HuskSpawnPercentage = "1.0";
+          SkitterSpawnPercentage = "1.0";
+          WreckerSpawnPercentage = "1.0";
+          LeaperSpawnPercentage = "1.0";
+          WeeperSpawnPercentage = "1.0";
+        };
+        # Cye's Push Doors! (3780683663): a forced opening (Alt+E) normally
+        # carries a bone-fracture risk on top of its endurance and muscle-strain
+        # cost. Players have no way of knowing that risk exists, so a fracture
+        # reads as a bug rather than a consequence — zero it out. Range 0.0-2.0
+        # (mod default 1.0); the endurance and muscle-strain costs are left
+        # untouched, so forced openings still hurt.
+        CyesPushDoors = {
+          ForcedOpeningFractureRiskMultiplier = "0.0";
         };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
