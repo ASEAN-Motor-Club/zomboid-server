@@ -248,6 +248,30 @@ with lib; let
         # download. Sandbox block `Bicycle` (spawn rates, speed multipliers,
         # zombie slowdown) is left at the mod's defaults.
         "3461415167"
+        # --- KI5 vehicle pack (added 2026-09-13 for the fresh-wipe pack) ---
+        # that DAMN Library (3171167894 / damnlib) — the framework all KI5
+        # vehicle mods require; 42.20 branch is versionMin=42.20.0. Three of the
+        # runtime mods below declare `require=\damnlib`, so it must be present.
+        "3171167894"
+        # KI5 '78 AM General M35 Series Trucks (2799152995) — ships each vehicle
+        # as its own mod id. The tanker add-on below requires the M35A2 base plus
+        # the M49A2C (fuel) and M50A3 (water) tanker bodies, so all three ids are
+        # activated; the M62 wrecker and M35A2extra variants are deliberately NOT.
+        # Only 42.0/ branches ship for these sub-mods (versionMin=42.0.0), which
+        # load fine on 42.20.4.
+        "2799152995"
+        # AM General Tanker Functionality (3790021065) — require= the three
+        # 78amgeneral* ids above. Adds 850 L fuel/water cargo tanks plus hose,
+        # pump, hydrant and world-container transfer workflows; also raises the
+        # M967 trailer tank to 2000 L (the trailer ships with the Oshkosh item).
+        "3790021065"
+        # '82 Oshkosh M911 + Military Semi-Trailers (2618213077) — require=\damnlib.
+        # Ships 42.20/ + 42.13/ branches; 42.20/ is versionMin=42.20.0.
+        "2618213077"
+        # Todds mods: Multi purpose item rack (3780806520) — standalone, no
+        # requires, 42.20/ branch with versionMin=42.20 (page carries explicit
+        # 42.20.4 reports).
+        "3780806520"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -263,6 +287,15 @@ with lib; let
         # another mod's overrides win. Move this line only if the bike
         # animations break again.
         "BicycleMod"
+        # --- KI5 vehicle pack: the library loads FIRST of this group, then the
+        # vehicles that require it. Load order is also resolved by the mods'
+        # own `require=` entries; this list keeps it explicit.
+        "damnlib"
+        "78amgeneralM35A2" "78amgeneralM49A2C" "78amgeneralM50A3"
+        "82oshkoshM911"
+        "AMGeneralTankerFunctionality"
+        # Todd's Multi purpose item rack — standalone.
+        "MultiPurposeItemRack"
         # --- AMC Zomboid Modpack (Steam collection 3776174669) ---
         "SwapIt" "VehicleRepairOverhaul" "fhqMotoriousZone" "ProximityInventory"
         "errorMagnifier" "RainCleansBlood" "ChuckleberryFinnAlertSystem" "DEON_CVG"
