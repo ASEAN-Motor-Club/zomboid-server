@@ -240,7 +240,15 @@ in {
 
     systemd.sockets.zomboid-server = {
       description = "Command Input FIFO for Zomboid Server";
-      wantedBy = ["sockets.target"];
+      # NOT wantedBy sockets.target — the socket is pulled in by the service's
+      # `requires`/`after` below when the game actually starts. If the socket is
+      # wanted at boot, EVERY deploy switch (switch-to-configuration restarts
+      # changed units, and the socket unit file churns with each system build)
+      # re-arms the socket, and `requires` then boots the whole game server as a
+      # side effect — the "zomboid starts on its own after every deploy" bug
+      # (2026-09-13/14). Also: any process opening the FIFO while the server is
+      # down socket-activates the game server.
+      wantedBy = [];
       socketConfig = {
         ListenFIFO = "/run/zomboid-server/server.fifo";
         SocketUser = cfg.user;
