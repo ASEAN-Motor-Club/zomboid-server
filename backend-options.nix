@@ -153,9 +153,10 @@ with lib; let
         # (Project Zomboid -> Project). Plain text only. Also keep it compact:
         # single <LINE> spacing and no obvious-info lines, so it fits the chat
         # panel height instead of being clipped.
-        # Temp: world-wipe notice (save resets 2026-09-13 18:00 GMT+7). Keep it
-        # to just the notice + Discord link; revert after the wipe happens.
-        ServerWelcomeMessage = "NOTICE: The world save will be WIPED on Sep 13, 2026 at 18:00 GMT+7 for a fresh new playthrough.<LINE>Discord: https://discord.gg/qrT2kqnfDH";
+        # Restored 2026-09-14 after the fresh-wipe (the temp wipe notice from
+        # #49 lived here). AMC-ized welcome; ASCII-safe except the intentional
+        # box-drawing/star glyphs (see references/pz-font-limitations.md).
+        ServerWelcomeMessage = "<RGB:1,0.85,0>★★ ASEAN Motor Club ★★ | Project Zomboid</RGB><LINE><LINE><RGB:0.72,0.86,1.0>━━━━ Welcome, Survivor! ━━━━</RGB><LINE><LINE>► PVE Co-operative<LINE>► Infection: Saliva Only (bites)<LINE>► Based on: Apocalypse preset<LINE>► Spawn: Muldraugh, KY<LINE><LINE><RGB:1,0.85,0>Discord: discord.gg/aseanmotorclub</RGB><LINE>Happy surviving!";
         # ServerWelcomeMessage renders in the chat panel, so PZ caps it at
         # ChatMessageCharacterLimit (default 200). The welcome string is ~326
         # raw chars WITH format tags, hence the truncated tail incl. the Discord
