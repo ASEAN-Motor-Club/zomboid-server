@@ -214,9 +214,12 @@ with lib; let
         "3635591071" "3648051123" "3671176591" "3680577450"
         "3690780070" "3716522633" "3723726293" "3725497089" "3734639991"
         "3739256725" "3744455714" "3747396551" "3749026793" "3755993986"
-        "3763470184" "3625933422" "3780965224" "3387539308" "3718216106"
+        "3763470184" "3625933422" "3780965224" "3718216106"
         "3386644536" "3566088272" "3281755175" "3385623534" "3470852353"
         "3776262249" "3773972040" "3683878228" "3664207077" "3774826484"
+        # NOTE: Auto Mechanics (3387539308 / AutoMechanics) was REMOVED
+        # 2026-09-13 — superseded by Auto All (3777237134), which includes its
+        # own vehicle-mechanics automation. See the `mods` note below.
         # --- Deliberate server-side ADDS beyond the collection (2026-08-18) ---
         # Tanks Have Propane (3676347667), Jeeve's Claims (3674013419).
         # NOTE: CoolerPlus (3688375772 / CoolerPlus) was added with these on
@@ -379,7 +382,15 @@ with lib; let
         "dustinguished_bolt_cutters" "SolarFloodlight" "RealisticCookingTimes"
         "VHSSkillNameInTooltip" "Neat_Rocco" "ComputerModkum" "SeedSeasonIndicator"
         "NewMusic" "PagerMod" "FoodDrying" "CVI" "GasPumpIndicator"
-        "PropaneExchangeCabinet" "FixedLightOnBeltAF" "AMCMusic" "AutoMechanics"
+        "PropaneExchangeCabinet" "FixedLightOnBeltAF" "AMCMusic"
+        # NOTE: AutoMechanics (3387539308) was REMOVED 2026-09-13 — Auto All
+        # (3777237134) covers vehicle mechanics automation itself via its own
+        # `enableMechanics` module, so the two produced duplicate mechanics-window
+        # entries. Operator decision, not a technical clash (both mods chain
+        # their hooks; neither overwrites the other). Removal is safe: Auto
+        # Mechanics is pure automation wrapping vanilla functions, defines no
+        # item types, and leaves behind only an orphaned `AutoMechanics` sandbox
+        # block in the existing save.
         "Battery Drain Multiplier" "saullevelup" "Mad_EasySetAlarm"
         "VanillaVehiclesAnimated" "RechargeableBatteries" "ImprovedFarmingInfoWindow"
         "PingItemsFriends" "ArcadiaRVInterior_B42_MP" "ArcadiaRVInterior_B42_Vanilla"
