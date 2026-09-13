@@ -242,6 +242,12 @@ with lib; let
         # moodle — already in the pack). Per-mutant spawn rates are pinned in
         # sandboxVars below (1.0% each; mod default 0.4%).
         "3796669056"
+        # [B42.20+/MP] Bicycle! (3461415167 / BicycleMod) — added 2026-09-13 for
+        # the fresh-wipe pack. Ships version branches 42.20/42.13/42.12, so our
+        # 42.20.4 build loads the 42.20 set; no `require=`; ~50 MB client
+        # download. Sandbox block `Bicycle` (spawn rates, speed multipliers,
+        # zombie slowdown) is left at the mod's defaults.
+        "3461415167"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -250,6 +256,13 @@ with lib; let
       default = [
         # ("ServerWorkshopModAutoRestartB42" removed 2026-08-27 — see the
         # workshopItems note above for why.)
+        # [B42.20+/MP] Bicycle! (3461415167) — FIRST in the load order on the
+        # author's explicit instruction ("Most issues should be resolved by
+        # placing the Bicycle at the TOP of the mod list"), after reports of
+        # bicycles becoming unrideable / stuck in the pick-up animation when
+        # another mod's overrides win. Move this line only if the bike
+        # animations break again.
+        "BicycleMod"
         # --- AMC Zomboid Modpack (Steam collection 3776174669) ---
         "SwapIt" "VehicleRepairOverhaul" "fhqMotoriousZone" "ProximityInventory"
         "errorMagnifier" "RainCleansBlood" "ChuckleberryFinnAlertSystem" "DEON_CVG"
