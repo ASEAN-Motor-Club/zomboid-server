@@ -272,6 +272,25 @@ with lib; let
         # requires, 42.20/ branch with versionMin=42.20 (page carries explicit
         # 42.20.4 reports).
         "3780806520"
+        # --- QoL / flavour pack (2026-09-13) ---
+        # It is of interest to me! (3796373365 / ItIsOfInterestToMe) — makes
+        # notes, letters, mail and ID cards readable. Client-only, ships NO
+        # scripts dir (so it cannot define item types) and stores its text in
+        # item ModData — verified safe to remove mid-save: items revert to
+        # vanilla behaviour and re-adding restores it.
+        "3796373365"
+        # Livestock Panel Plus (3783623999 / LivestockPanelPlus) — herd status
+        # table in the zone check panel; re-uses vanilla animal timed actions.
+        "3783623999"
+        # Cye's Push Doors! (3780683663 / CyesPushDoors) — door impacts, zombie
+        # pressure blocking, own timed actions + animsets (CPD_*; no path
+        # collisions with Bicycle/damnlib animsets, checked 2026-09-13).
+        "3780683663"
+        # Project Dirtroad (3782929173 / ProjectDirtroad) — traffic wears
+        # persistent dirt paths; vanilla sprites only, no custom assets. Writes
+        # owned tiles into the save, so removal needs its Cleanup/Uninstall Mode
+        # plus a visit to affected areas.
+        "3782929173"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -296,6 +315,11 @@ with lib; let
         "AMGeneralTankerFunctionality"
         # Todd's Multi purpose item rack — standalone.
         "MultiPurposeItemRack"
+        # --- QoL / flavour pack — all standalone, no requires ---
+        "ItIsOfInterestToMe"
+        "LivestockPanelPlus"
+        "CyesPushDoors"
+        "ProjectDirtroad"
         # --- AMC Zomboid Modpack (Steam collection 3776174669) ---
         "SwapIt" "VehicleRepairOverhaul" "fhqMotoriousZone" "ProximityInventory"
         "errorMagnifier" "RainCleansBlood" "ChuckleberryFinnAlertSystem" "DEON_CVG"
