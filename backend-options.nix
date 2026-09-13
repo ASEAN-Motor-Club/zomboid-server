@@ -271,6 +271,16 @@ with lib; let
         # '82 Oshkosh M911 + Military Semi-Trailers (2618213077) — require=\damnlib.
         # Ships 42.20/ + 42.13/ branches; 42.20/ is versionMin=42.20.0.
         "2618213077"
+        # --- KI5 civilian vehicles (added 2026-09-14, quick pre-exploration
+        # add; all three require=\damnlib above, ship 42.0/ + 42.13/ branches
+        # with versionMin=42.0.0, verified by test-download: mod.info ids
+        # 89defender / 97bushmaster / 93fordF350) ---
+        # '89 LAND ROVER Defender (3570973322).
+        "3570973322"
+        # '97 ADI Bushmaster (2897390033).
+        "2897390033"
+        # '93 Ford F-Series (3073430075).
+        "3073430075"
         # Todds mods: Multi purpose item rack (3780806520) — standalone, no
         # requires, 42.20/ branch with versionMin=42.20 (page carries explicit
         # 42.20.4 reports).
@@ -353,6 +363,10 @@ with lib; let
         "78amgeneralM35A2" "78amgeneralM49A2C" "78amgeneralM50A3"
         "82oshkoshM911"
         "AMGeneralTankerFunctionality"
+        # --- KI5 civilian vehicles (2026-09-14): 89defender / 97bushmaster /
+        # 93fordF350 — all require=\damnlib (loaded above); appended after the
+        # military KI5 group so the library-first ordering stays obvious.
+        "89defender" "97bushmaster" "93fordF350"
         # Todd's Multi purpose item rack — standalone.
         "MultiPurposeItemRack"
         # --- QoL / flavour pack — all standalone, no requires ---
