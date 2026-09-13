@@ -587,6 +587,15 @@ with lib; let
           LeaperSpawnPercentage = "1.0";
           WeeperSpawnPercentage = "1.0";
         };
+        # Cye's Push Doors! (3780683663): a forced opening (Alt+E) normally
+        # carries a bone-fracture risk on top of its endurance and muscle-strain
+        # cost. Players have no way of knowing that risk exists, so a fracture
+        # reads as a bug rather than a consequence — zero it out. Range 0.0-2.0
+        # (mod default 1.0); the endurance and muscle-strain costs are left
+        # untouched, so forced openings still hurt.
+        CyesPushDoors = {
+          ForcedOpeningFractureRiskMultiplier = "0.0";
+        };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
     };
