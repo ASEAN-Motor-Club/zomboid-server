@@ -592,6 +592,19 @@ with lib; let
         ZombieLore = {
           Transmission = "2";
         };
+        # ZombieConfig: population density knobs for the new playthrough
+        # (2026-09-13). NOTE these are NOT top-level keys — PZ nests them in
+        # the ZombieConfig block of the SandboxVars Lua table, so they must be
+        # pinned under this block name or the reconcile writes them where the
+        # game never reads them. PopulationMultiplier 0.75 = above the 0.65
+        # "Normal" preset (the docs note setting it here overrides the
+        # "Zombie Count" preset option). Start 1.0 / Peak 1.5 match the
+        # presets but are pinned explicitly so a reseed can't drift them.
+        ZombieConfig = {
+          PopulationMultiplier = "0.75";
+          PopulationStartMultiplier = "1.0";
+          PopulationPeakMultiplier = "1.5";
+        };
         # Tanks Have Propane (3676347667): allow gas station pumps as a propane
         # refill source (default false = only Fossoil/Gas2Go storage tanks count).
         TanksHavePropane = {
@@ -627,6 +640,33 @@ with lib; let
           # FarmingSpeedNew lines). Boot-only: applies at next restart.
           PlantGrowingSeasons = "false";
           FarmingSpeedNew = "3.0";
+          # --- Loot respawn / reading / event tuning (new playthrough, 2026-09-13) ---
+          # Loot respawn: containers are only eligible once looted at least once,
+          # and respawn is NOT blocked by visibility or later looting. 504
+          # in-game hours (~21 in-game days) is the cadence we want; 0 = disabled.
+          # SeenHoursPreventLootRespawn = 0 keeps "recently visited" from
+          # suppressing respawn entirely (0 = no suppression window).
+          HoursForLootRespawn = "504";
+          SeenHoursPreventLootRespawn = "0";
+          # MaximumLooted = the chance (%, range 0-200) that any building is
+          # ALREADY looted when first found -- 0 = no building is ever
+          # pre-looted, i.e. full loot everywhere. It is NOT a loot-respawn cap
+          # (an easy misread; corrected against the live file's own comment).
+          # MaximumDiminishedLoot = the max % of loot that stops spawning once
+          # DaysUntilMaximumDiminishedLoot (3650, deliberately left at default)
+          # is reached -- so 10 (was 20) means MORE loot long-term, not less.
+          # The actual respawn cap is MaxItemsForLootRespawn (default 5:
+          # containers holding >= this many items don't respawn) -- operator
+          # decision 2026-09-13: leave it at the default, unlimited-respawn
+          # intent does not require changing it.
+          MaximumLooted = "0";
+          MaximumDiminishedLoot = "10";
+          # Helicopter = how often a helicopter passes over the Event Zone:
+          # 1 never .. 4 very often. 3 = often (was 2).
+          Helicopter = "3";
+          # MinutesPerPage = real minutes spent reading one page of literature
+          # (default 2.0). 0.25 makes skill books fast to read.
+          MinutesPerPage = "0.25";
         };
         # The Mutants (3796669056 / PZTheMutants): each key is the share of
         # zombie spawns replaced by that mutant variant, range 0.0-100.0 (0
