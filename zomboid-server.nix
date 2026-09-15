@@ -310,7 +310,7 @@ in {
         # HeapDumpOnOutOfMemoryError writes a .hprof on any OOME so the next
         # heap incident is diagnosable from the dump instead of inference.
         if [ -f "$STATE_DIRECTORY/start-server.sh" ]; then
-          sed -i -E 's/-Xms[0-9]+[gGmM]/-Xms${cfg.jvmMinHeap}/g; s/-Xmx[0-9]+[gGmM]/-Xmx${cfg.jvmMaxHeap} -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${dataDir}\/heapdump/g' "$STATE_DIRECTORY/start-server.sh"
+          sed -i -E 's/-Xms[0-9]+[gGmM]/-Xms${cfg.jvmMinHeap}/g; s|-Xmx[0-9]+[gGmM]|-Xmx${cfg.jvmMaxHeap} -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${dataDir}/heapdump|g' "$STATE_DIRECTORY/start-server.sh"
           mkdir -p ${dataDir}/heapdump
         fi
 
