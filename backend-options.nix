@@ -237,6 +237,16 @@ with lib; let
         # collection (3776174669) before the applying restart, or clients
         # subscribed only to the collection get a mod-mismatch kick on join.
         "3778868211"
+        # Burd's Survival Journals (3639628777 / BurdSurvivalJournals) — STAGING
+        # TEST 2026-09-17, deliberate server-side ADD beyond the collection.
+        # Verify-by-download passed: single-mod item, mod.info id=BurdSurvivalJournals,
+        # versionMin=42.15 version folder (loads on 42.20.x), no url= line.
+        # Sandbox tuned for lore-friendly player journals ONLY: loot journals,
+        # cursed/Yuletide, and trait learning disabled. Known dedicated-server
+        # risks: 64KB player-data cap rollback if players log out carrying fat
+        # journals (advise storing in containers); removal mid-save destroys
+        # journal data (one-way door once players record).
+        "3639628777"
         # The Mutants (3796669056 / PZTheMutants) — added 2026-09-13 for the
         # fresh-wipe pack. Adds 6 special-zombie variants (Puker, Husk, Skitter,
         # Wrecker, Leaper, Weeper) with their own models/animations/sounds;
@@ -417,6 +427,9 @@ with lib; let
         # Nick's Turn Off Fridges (3778868211) — deliberate server-side ADD,
         # see the corresponding workshopItems NOTE. "NicksTurnOffFridges".
         "NicksTurnOffFridges"
+        # Burd's Survival Journals (3639628777) — STAGING TEST, see the
+        # corresponding workshopItems NOTE. "BurdSurvivalJournals".
+        "BurdSurvivalJournals"
         # The Mutants (3796669056) — appended LAST on purpose: it assigns custom
         # zombie Outfit IDs, and the author's load-order rule is that
         # MoodleFramework (listed earlier above) must load BEFORE it. Mods that
@@ -710,6 +723,37 @@ with lib; let
         # untouched, so forced openings still hurt.
         CyesPushDoors = {
           ForcedOpeningFractureRiskMultiplier = "0.0";
+        };
+        # Burd's Survival Journals (3639628777 / BurdSurvivalJournals) — STAGING
+        # TEST: strict lore-friendly configuration — ONLY the restore-skills-
+        # after-death mechanism via self-crafted player journals. Loot journals
+        # (worn/bloody spawns), the cursed/Yuletide "fun" layer, negative
+        # traits, and trait/stat recording are all disabled; a player records
+        # earned skill XP (and recipes, which are also learned knowledge) and
+        # reads it back on the next character. Keys verified against the mod's
+        # own sandbox-options.txt (BurdJournals.* options, defaults in
+        # BurdJournals_Shared.lua). Lean journal data also minimises the 64KB
+        # player-data-cap rollback exposure. NOTE: the BurdJournals block does
+        # not exist in amc_SandboxVars.lua until PZ has loaded the mod once —
+        # reconcileLua only asserts keys inside blocks it can already find, so
+        # the first boot keeps mod defaults and these apply from the next boot.
+        BurdJournals = {
+          EnableJournals = "true";
+          EnablePlayerJournals = "true";
+          EnablePlayerJournalCrafting = "true";
+          # --- no loot journals / fun layer ---
+          EnableWornJournalSpawns = "false";
+          EnableBloodyJournalSpawns = "false";
+          EnableLootJournalsFun = "false";
+          EnableCursedJournalSpawns = "false";
+          EnableYuletideJournalSpawns = "false";
+          AllowNegativeTraits = "false";
+          # --- skills-only recording: no traits, no stats, no VHS ---
+          EnableTraitRecordingPlayer = "false";
+          EnableStatRecording = "false";
+          RecordZombieKills = "false";
+          RecordHoursSurvived = "false";
+          AllowVhsSkillRecording = "false";
         };
       };
       description = "Declarative per-block overrides written into <servername>_SandboxVars.lua every boot (idempotent). Keyed by Lua block name, then by option key. E.g. { WorkshopModServerUpdate = { RestartDelayMinutes = \"5\"; }; }";
