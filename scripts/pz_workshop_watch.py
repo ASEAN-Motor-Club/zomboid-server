@@ -32,6 +32,7 @@ If the PZ unit is not active, changes are absorbed silently into the baseline
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -117,6 +118,69 @@ def save_state(path, state):
 
 
 
+def read_live_items(ini_path):
+    """Workshop IDs on the LIVE server's WorkshopItems= line, or None when the
+    ini is missing/unparseable (caller skips the coverage check)."""
+    try:
+        with open(ini_path, encoding="utf-8", errors="replace") as f:
+            m = re.search(r"^WorkshopItems=(.*)$", f.read(), re.MULTILINE)
+    except OSError:
+        return None
+    if not m:
+        return None
+    return {x.strip() for x in m.group(1).split(";") if x.strip()}
+
+
+def check_coverage(args, state, ids):
+    """Alarm when the deployed config's tracked items diverge from the LIVE
+    server's WorkshopItems= line. The boot-time config reconcile re-asserts
+    the config's list on every boot, so divergence means the running server
+    and the deployed config disagree — normally a deploy from a stale source
+    downgraded the config (hit 2026-09-19/20: config reverted 88 -> 67 items,
+    watcher went blind to 21 mods, players got version-mismatch kicks for
+    ~18h before anyone noticed). Alerts once per new divergence signature,
+    stays quiet while unchanged, posts a resolve note when it clears."""
+    live = read_live_items(args.server_ini)
+    if live is None:
+        return
+    cfg = set(ids)
+    live_only = sorted(live - cfg)
+    cfg_only = sorted(cfg - live)
+    sig = None if not live_only and not cfg_only else {
+        "live_only": live_only, "config_only": cfg_only}
+    prev = state.get("coverage_alert")
+    if sig == prev:
+        return  # unchanged — stay quiet
+    state["coverage_alert"] = sig
+    if sig is None:
+        if prev is not None:
+            post_all(args.webhook_url,
+                     f"✅ PZ watcher coverage restored: deployed config and "
+                     f"live modlist agree ({len(cfg)} items).")
+        return
+
+    def brief(wids):
+        shown = ", ".join(f"`{w}`" for w in wids[:15])
+        return shown + (f" … +{len(wids) - 15} more" if len(wids) > 15 else "")
+
+    parts = []
+    if sig["live_only"]:
+        parts.append(f"**live-only — watcher BLIND to these "
+                     f"({len(sig['live_only'])})**: {brief(sig['live_only'])}")
+    if sig["config_only"]:
+        parts.append(f"**config-only — not on the live server "
+                     f"({len(sig['config_only'])})**: {brief(sig['config_only'])}")
+    post_all(args.webhook_url,
+             "🚨 **PZ watcher coverage gap** — deployed config tracks "
+             f"{len(cfg)} items, live `amc.ini` has {len(live)}.\n"
+             + "\n".join(parts)
+             + "\nLikely cause: a deploy/rebuild from a stale source downgraded "
+             "the config (the boot-time reconcile makes it stick and blinds "
+             "this watcher). Redeploy current amc-server master.")
+
+
+
+
 def pz_active(unit):
     r = subprocess.run(["systemctl", "is-active", "--quiet", unit])
     return r.returncode == 0
@@ -154,6 +218,9 @@ def main():
                     help="seconds to watch for a new MainPID after quit")
     ap.add_argument("--items", required=True,
                     help="semicolon-separated Steam workshop IDs to monitor")
+    ap.add_argument("--server-ini",
+                    default="/var/lib/zomboid-server/Zomboid/Server/amc.ini",
+                    help="live server ini to cross-check watcher coverage against")
     args = ap.parse_args()
 
     ids = [x.strip() for x in args.items.split(";") if x.strip()]
@@ -162,6 +229,7 @@ def main():
         return
 
     state = load_state(args.state_file)
+    check_coverage(args, state, ids)
     known = state.get("items", {})
     current = fetch_workshop(ids)
 

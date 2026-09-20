@@ -506,7 +506,8 @@ in {
           --fifo "/run/${cfg.stateDirectory}/server.fifo" \
           --unit "zomboid-server.service" \
           --grace-minutes ${toString cfg.workshopWatcher.gracePeriodMinutes} \
-          --items "${concatStringsSep ";" cfg.workshopItems}"
+          --items "${concatStringsSep ";" cfg.workshopItems}" \
+          --server-ini "${dataDir}/Zomboid/Server/amc.ini"
       '';
     };
 
