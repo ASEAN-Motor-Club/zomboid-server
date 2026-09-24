@@ -41,22 +41,26 @@ with lib; let
       ++ optional (cfg.discord.enable && cfg.discord.chatChannel != "") "DiscordChatChannel=${cfg.discord.chatChannel}"
       ++ optional (cfg.discord.enable && cfg.discord.logChannel != "") "DiscordLogChannel=${cfg.discord.logChannel}"
       ++ optional (cfg.discord.enable && cfg.discord.commandChannel != "") "DiscordCommandChannel=${cfg.discord.commandChannel}"
-    ) + "\n"
+    )
+    + "\n"
   );
 
   # Systemd unit runs with a restricted PATH; reconcileIni needs python3.
-  reconcilePath = lib.makeBinPath (with pkgs; [ python3 coreutils gnused ]);
+  reconcilePath = lib.makeBinPath (with pkgs; [python3 coreutils gnused]);
 
   # Flatten declarative sandboxVars ({BlockName = { key = value; };}) into
   # reconcileLua's desired format: one `BlockName.key=value` line per pinned key.
   renderedSandbox = pkgs.writeText "sandbox-overrides.txt" (
     concatStringsSep "\n" (
-      mapAttrsToList (block: vars:
-        concatStringsSep "\n" (
-          mapAttrsToList (k: v: "${block}.${k}=${v}") vars
-        )
-      ) cfg.sandboxVars
-    ) + "\n"
+      mapAttrsToList (
+        block: vars:
+          concatStringsSep "\n" (
+            mapAttrsToList (k: v: "${block}.${k}=${v}") vars
+          )
+      )
+      cfg.sandboxVars
+    )
+    + "\n"
   );
 
   # Idempotent, no-space INI reconcile. PZ's ConfigFile.read() splits on '=' and
@@ -191,24 +195,27 @@ in {
   };
 
   config = mkIf cfg.enable {
-    assertions = [{
-      assertion = !cfg.updateNotifier.enable || cfg.updateNotifier.webhookFile != null;
-      message = "services.zomboid-server.updateNotifier.webhookFile must be set when updateNotifier.enable = true";
-    }
-    {
-      assertion = !cfg.statusNotifier.enable || cfg.statusNotifier.webhookFile != null;
-      message = "services.zomboid-server.statusNotifier.webhookFile must be set when statusNotifier.enable = true";
-    }
-    {
-      assertion = !cfg.changelogNotifier.enable || cfg.changelogNotifier.webhookFile != null;
-      message = "services.zomboid-server.changelogNotifier.webhookFile must be set when changelogNotifier.enable = true";
-    }
-    {
-      assertion = !cfg.workshopWatcher.enable
-        || cfg.workshopWatcher.webhookFile != null
-        || cfg.workshopWatcher.webhookFiles != [];
-      message = "services.zomboid-server.workshopWatcher needs at least one Discord webhook: set webhookFile or webhookFiles";
-    }];
+    assertions = [
+      {
+        assertion = !cfg.updateNotifier.enable || cfg.updateNotifier.webhookFile != null;
+        message = "services.zomboid-server.updateNotifier.webhookFile must be set when updateNotifier.enable = true";
+      }
+      {
+        assertion = !cfg.statusNotifier.enable || cfg.statusNotifier.webhookFile != null;
+        message = "services.zomboid-server.statusNotifier.webhookFile must be set when statusNotifier.enable = true";
+      }
+      {
+        assertion = !cfg.changelogNotifier.enable || cfg.changelogNotifier.webhookFile != null;
+        message = "services.zomboid-server.changelogNotifier.webhookFile must be set when changelogNotifier.enable = true";
+      }
+      {
+        assertion =
+          !cfg.workshopWatcher.enable
+          || cfg.workshopWatcher.webhookFile != null
+          || cfg.workshopWatcher.webhookFiles != [];
+        message = "services.zomboid-server.workshopWatcher needs at least one Discord webhook: set webhookFile or webhookFiles";
+      }
+    ];
 
     networking.firewall = lib.mkIf cfg.openFirewall {
       allowedUDPPorts = [cfg.port (cfg.port + 1)];
@@ -388,7 +395,7 @@ in {
         Restart = "always";
         RestartSec = "5";
       };
-      path = with pkgs; [ curl coreutils gnused systemd ];
+      path = with pkgs; [curl coreutils gnused systemd];
       script = ''
         set -u
         WEBHOOK="$(cat "${cfg.updateNotifier.webhookFile}")"
@@ -419,7 +426,7 @@ in {
       serviceConfig = {
         Type = "oneshot";
       };
-      path = with pkgs; [ python3 ];  # script uses stdlib only, but pin python3
+      path = with pkgs; [python3]; # script uses stdlib only, but pin python3
       script = ''
         set -u
         WEBHOOK="$(cat "${cfg.statusNotifier.webhookFile}")"
@@ -436,7 +443,7 @@ in {
     };
 
     systemd.timers.zomboid-status-notify = lib.mkIf cfg.statusNotifier.enable {
-      wantedBy = [ "timers.target" ];
+      wantedBy = ["timers.target"];
       timerConfig = {
         OnCalendar = cfg.statusNotifier.interval;
         Persistent = true;
@@ -452,7 +459,7 @@ in {
       serviceConfig = {
         Type = "oneshot";
       };
-      path = with pkgs; [ curl coreutils ];
+      path = with pkgs; [curl coreutils];
       script = ''
         set -u
         WEBHOOK="$(cat "${cfg.changelogNotifier.webhookFile}")"
@@ -464,7 +471,7 @@ in {
     };
 
     systemd.timers.zomboid-changelog-notify = lib.mkIf cfg.changelogNotifier.enable {
-      wantedBy = [ "timers.target" ];
+      wantedBy = ["timers.target"];
       timerConfig = {
         OnCalendar = cfg.changelogNotifier.interval;
         Persistent = true;
@@ -482,14 +489,14 @@ in {
     # other notifier services here.
     systemd.services.zomboid-workshop-watch = lib.mkIf cfg.workshopWatcher.enable {
       description = "Watch workshop revisions and restart PZ via save-first fifo path";
-      after = [ "network-online.target" ];
-      wants = [ "network-online.target" ];
+      after = ["network-online.target"];
+      wants = ["network-online.target"];
       serviceConfig = {
         Type = "oneshot";
         # grace period sleeps inside the run; never let two ticks overlap
         TimeoutStartSec = "1h";
       };
-      path = with pkgs; [ python3 coreutils systemd ];
+      path = with pkgs; [python3 coreutils systemd];
       script = ''
         set -u
         # One --webhook-url flag per configured secret; the script fans out
@@ -512,7 +519,7 @@ in {
     };
 
     systemd.timers.zomboid-workshop-watch = lib.mkIf cfg.workshopWatcher.enable {
-      wantedBy = [ "timers.target" ];
+      wantedBy = ["timers.target"];
       timerConfig = {
         OnCalendar = cfg.workshopWatcher.interval;
         Persistent = true;
