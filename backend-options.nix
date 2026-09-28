@@ -176,6 +176,9 @@ with lib; let
         # the safety net (these are PZ defaults today):
         BackupsOnStart = "true";
         BackupsOnVersionChange = "true";
+        # Delete all trash/dirty items on the floor (operator request, 2026-09-28).
+        # Previously left at the PZ default (false).
+        TrashDeleteAll = "true";
       };
       description = ''
         Declarative `key=value` overrides for the PZ <servername>.ini — the
