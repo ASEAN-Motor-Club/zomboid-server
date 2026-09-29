@@ -405,6 +405,15 @@ with lib; let
         # items/recipes/world data and is safe to toggle on an existing save.
         # Our copy is v2.4.20, which carries the double-click quick-action fix.
         "3451167732"
+        # Plysken Battery Charger (3793465866 / PBC) — REPLACES Rechargeable
+        # Batteries (3385623534, deleted from Workshop by its author 2026-09-29).
+        # Verified by download: mods/"Plysken Battery Charger"/42.1/,
+        # id=PBC, versionMin=42.20, no url=, single-mod item, no requires.
+        # Server-authoritative sync (client sendClientCommand -> server validates
+        # item ownership incl. bags -> server broadcasts). 4-star/189 ratings,
+        # updated 2026-09-26, active author (MP desync report 2026-09-06 fixed
+        # in v2.1.1 2026-09-10). No pack mod overrides Base.Battery item script.
+        "3793465866"
       ];
       description = "Steam collection Workshop IDs, rendered as the WorkshopItems= line (order preserved).";
     };
@@ -516,6 +525,9 @@ with lib; let
         "VanillaVehiclesAnimated"
         "ImprovedFarmingInfoWindow"
         "PingItemsFriends"
+        # Plysken Battery Charger (3793465866) — replacement for the deleted
+        # Rechargeable Batteries; internal id=PBC (verified by download).
+        "PBC"
         "ArcadiaRVInterior_B42_MP"
         "ArcadiaRVInterior_B42_Vanilla"
         "B42FRUsedCarsAnimAlpha"
