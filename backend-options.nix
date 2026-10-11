@@ -141,6 +141,12 @@ with lib; let
         # (Log) so the server still records suspected violations but never
         # kicks/bans over a timing blip.
         AntiCheatHit = "3";
+        # AntiCheatPlayer false-positives on "update failed"/"cooldown" — client
+        # desync/lag, not cheating (strikes reset between events, hits legit
+        # players at normal ping; 27 triggers on one 45ms-ping player in a week).
+        # The jar hardcodes the /4 strike denominator, so Log is the only
+        # config-side fix. Pin to 3 (Log) like AntiCheatHit above.
+        AntiCheatPlayer = "3";
         # 1=Hidden 2=Friends 3=Friends+nearby 4=Everyone. AMC wants everyone's
         # token visible on the map (community survival server).
         MapRemotePlayerVisibility = "4";
