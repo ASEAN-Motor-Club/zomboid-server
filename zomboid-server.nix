@@ -180,10 +180,25 @@ with lib; let
   # from /run/zomboid-server/server.fifo (its stdin via socket activation).
   # The devs discourage SIGTERM (it does not flush saves), so KillSignal is set
   # to SIGCONT (a no-op) and the quit command exits the JVM cleanly.
+  #
+  # MUST run as root (ExecStop is prefixed with "+"): systemd's socket unit
+  # creates /run/zomboid-server as root:root 0770 — DirectoryMode sets only the
+  # mode, ownership stays with the unit's user — so a stop script running as
+  # services.zomboid-server.user (steam) cannot even traverse the directory and
+  # every write here fails with EACCES. With the old `2>/dev/null || true` that
+  # failure was invisible: no save, no quit, and the unit fell through to the
+  # 60 s stop timeout / SIGKILL, i.e. exactly the "world rolled back a couple of
+  # hours while player data stayed current" shape. Failures are now journaled.
   stopScript = pkgs.writeShellScript "zomboid-stop" ''
-    echo save > /run/zomboid-server/server.fifo 2>/dev/null || true
+    fifo=/run/zomboid-server/server.fifo
+    if ! timeout 5 sh -c "echo save > $fifo"; then
+      echo "zomboid-stop: could not write 'save' to $fifo" >&2
+    fi
     sleep 15
-    echo quit > /run/zomboid-server/server.fifo 2>/dev/null || true
+    if ! timeout 5 sh -c "echo quit > $fifo"; then
+      echo "zomboid-stop: could not write 'quit' to $fifo" >&2
+    fi
+    exit 0
   '';
 in {
   imports = [
@@ -288,7 +303,10 @@ in {
         RestartSec = "10";
         KillSignal = "SIGCONT";
         TimeoutStopSec = "60";
-        ExecStop = stopScript;
+        # "+" = run as root regardless of User=. The FIFO's parent dir is
+        # root:root 0770, so this script must not run as cfg.user (EACCES on
+        # every write → no save, fall through to SIGKILL). See stopScript.
+        ExecStop = "+${stopScript}";
         StateDirectory = cfg.stateDirectory;
         StateDirectoryMode = "770";
         WorkingDirectory = dataDir;
