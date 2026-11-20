@@ -141,6 +141,20 @@ with lib; let
         # (Log) so the server still records suspected violations but never
         # kicks/bans over a timing blip.
         AntiCheatHit = "3";
+        # AntiCheatChecksum governs the Lua/script checksum validation
+        # (DoLuaChecksum=true). PZ default is 2 (Kick) on the FIRST mismatch
+        # (counter 1/1, 60 s grace) — a false-positive machine: a mod pushed
+        # while a player was connected, an unfinished Steam download, a stale
+        # hand-copied mod folder, or any client-side-only mod that shadows a
+        # shared file all read identically to "tampered client". 42.22.2 also
+        # has a confirmed vanilla false positive on the generated
+        # media/scripts/generated/entities/*.txt files (identical SHA-256 on
+        # both sides, still kicked: official bug report, Nov 2026).
+        # Pin to 3 (Log): mismatches are still recorded and the offending file
+        # still surfaces in the client's console.txt for per-player triage,
+        # but players are not dropped over a client-state mismatch the server
+        # cannot verify.
+        AntiCheatChecksum = "3";
         # 1=Hidden 2=Friends 3=Friends+nearby 4=Everyone. AMC wants everyone's
         # token visible on the map (community survival server).
         MapRemotePlayerVisibility = "4";
